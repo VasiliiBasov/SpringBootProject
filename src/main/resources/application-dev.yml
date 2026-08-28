@@ -1,0 +1,5 @@
+app:
+  greeting: Hello from DEV profile
+logging:
+  level:
+    com.vasilii.notificationhun: DEBUG

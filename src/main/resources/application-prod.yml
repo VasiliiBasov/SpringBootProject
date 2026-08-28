@@ -1,0 +1,5 @@
+app:
+  greeting: Hello from PROD profile
+logging:
+  level:
+    com.vaasilii.notificationhub: ERROR
