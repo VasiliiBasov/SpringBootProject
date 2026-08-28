@@ -149,3 +149,83 @@
 4. **В Boot всё, что было в Core, работает**: DI, scope, AOP, BPP, lifecycle
 
 ---
+
+## Шаг 2: Spring Boot автоконфигурация (28.08.2026) ✅
+
+### Микро-шаг A — `application.properties` меняет поведение без правки кода
+
+**Теория:** Boot читает `application.properties` (или `.yml`) из `src/main/resources/` до старта контекста. Свойства типа `server.port`, `spring.application.name` влияют на сам процесс подъёма (порт Tomcat, имя приложения в логах).
+
+**Практика ученика:**
+- Добавил `server.port=8081` и `spring.application.name=notification-hub` в `application.properties`
+- В логе старта увидел `Tomcat initialized with port 8081 (http)` и префикс `[notification-hub]`
+- Заметка: IDEA подхватила JDK **23.0.1** (не 24.0.2 как было в системе ранее) — Boot 4 совместим
+
+### Микро-шаг B — `@Value` подхватывает кастомное свойство
+
+**Теория:** `@Value("${имя.свойства}")` инжектит значение из конфигурации в поле бина. Также в main показал, что `SpringApplication.run(...)` возвращает `ConfigurableApplicationContext`, который можно закрыть через `ctx.close()` — это идиома интеграционных тестов.
+
+**Практика ученика:**
+- Создал `GreetingService` с `@Value("${app.greeting}")`
+- В `application.properties`: `app.greeting=Hello from default profile`
+- Переписал `main` чтобы сохранить `ctx` из `run` и вызвать `ctx.close()` после `greet()`
+- В логе: `>>> Hello from default profile` + `Process finished with exit code 0` — контекст закрылся, JVM вышла
+
+### Микро-шаг C — профили `dev`/`prod`
+
+**Теория:** Boot грузит `application-{profile}.yml` поверх базового, если профиль активен. Активация через `--spring.profiles.active=dev` в Program arguments IDEA. Если профиль не задан — Boot фоллбэчит на `"default"`.
+
+**Практика ученика:**
+- Создал `application-dev.yml` с `app.greeting: Hello from DEV profile` + `logging.level.com.vasilii.notificationhub: DEBUG`
+- Создал `application-prod.yml` с `app.greeting: Hello from PROD profile` + `logging.level...: ERROR`
+- Запустил под `dev` → `>>> Hello from DEV profile`
+- Запустил под `prod` → `>>> Hello from PROD profile`
+- В обоих логах увидел `The following 1 profile is active: "dev"` / `"prod"`
+
+### Микро-шаг D — `@Profile` подменяет реализацию бина
+
+**Теория:** `@Profile("dev")` на `@Service` = бин создаётся только при активном `dev`. Не подходит профиль → бина в контексте **нет вообще**. Один интерфейс — разные реализации под разные профили (паттерн «strategy by profile»).
+
+**Практика ученика:**
+- Создал интерфейс `MessageService` и 2 реализации: `DevMessageService` (`@Profile("dev")`) и `ProdMessageService` (`@Profile("prod")`)
+- Обновил `GreetingService` — конструкторный инжект `MessageService`, вызов `send` после `greet()`
+- Запустил под `dev` → `[DEV-MOCK] to=user@example.com text=Hello from DEV profile`
+- Запустил под `prod` → `[PROD-SMTP] to=user@example.com text=Hello from PROD profile`
+- Ответ ученика на вопрос «почему не падает DI»: «подтягиваются только бины с тем профилем в котором мы работаем» ✅
+
+### Мини-экзамен
+
+**Вопрос 1:** Забыли `--spring.profiles.active=prod` в проде. Активен `default`. Что произойдёт при `messageService.send(...)`?
+
+**Ответ ученика:** «приложение упадёт, потому что т.к. не выбран профиль у нас попало в контекст 2 бина мессаджесервис и springboot не знает к какому обратиться.»
+
+**Оценка:** 🟡 70%. **Суть верная (DI упадёт), но механизм неверный:**
+- Бинов в контексте **0**, не 2. `@Profile("dev")` и `@Profile("prod")` не подходят под активный `default` → бины не создаются вообще
+- Исключение: `NoSuchBeanDefinitionException` (не нашли ни одного), **не** `NoUniqueBeanDefinitionException` (нашли несколько, не знаем какой)
+- **Поправка (выучить):** «Если активный профиль не подходит ни под `@Profile` ни одного бина-кандидата, то бина в контексте нет. DI упадёт с `NoSuchBeanDefinitionException`»
+
+**Вопрос 2:** В `application.properties` написано `app.greeting=Hi from .properties`, в `application.yml` — `app.greeting: Hi from .yml`. Что в логе?
+
+**Ответ ученика:** «properties, потому что они выше в иерархии.»
+
+**Оценка:** 🟢 90%. Факт правильный, формулировку уточнить:
+- Лучше говорить «приоритет» / «порядок загрузки», а не «иерархия» (звучит размыто)
+- **Поправка:** «При конфликте побеждает `.properties`, потому что грузится **позже** `.yml` (приоритет выше)»
+
+**Средний балл шага 2: 80%** 🎯
+
+> 💡 Это **первый шаг с полноценной практикой** в формате v2 (микро-шаги). Прогресс с шага 1 (70%) — заметный. Главный пробел: путает «нет бинов» и «несколько бинов» — это разные исключения в Spring, на собесе любят спрашивать.
+
+### Шпаргалка для собеса (обновляется)
+
+1. **`@SpringBootApplication` = `@Configuration` + `@EnableAutoConfiguration` + `@ComponentScan`**
+2. **`@EnableAutoConfiguration` — магия**: фреймворк смотрит в classpath и сам регистрирует бины (Tomcat, DataSource, Jackson)
+3. **`SpringApplication.run()` — обычный Java-метод**, делает несколько шагов и блокирует main-поток
+4. **В Boot всё, что было в Core, работает**: DI, scope, AOP, BPP, lifecycle
+5. **Конфиг-файлы:** `application.properties` ИЛИ `application.yml` (`.properties` приоритетнее при конфликте)
+6. **Кастомные свойства:** `@Value("${app.foo}")` для простых, `@ConfigurationProperties` для сложных (на следующем шаге)
+7. **Профили:** `application-{profile}.yml` + `--spring.profiles.active=dev` (или в `application.yml`)
+8. **`@Profile`:** бин создаётся только если активен указанный профиль. Не подошёл → бина **нет** → `NoSuchBeanDefinitionException`
+9. **`ctx.close()`** идиома для тестов: закрывает контекст, дёргает `@PreDestroy`, JVM выходит с кодом 0
+
+---
