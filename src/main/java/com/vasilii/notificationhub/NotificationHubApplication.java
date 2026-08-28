@@ -9,11 +9,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 public class NotificationHubApplication {
 
 	public static void main(String[] args) {
+        SpringApplication.run(NotificationHubApplication.class, args);
 
-        ConfigurableApplicationContext ctx = SpringApplication.run(NotificationHubApplication.class, args);
-        GreetingService gr = ctx.getBean(GreetingService.class);
-        gr.greet();
-        ctx.close();
 	}
 
 }

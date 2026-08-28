@@ -220,6 +220,33 @@
 
 > 💡 Это **первый шаг с полноценной практикой** в формате v2 (микро-шаги). Прогресс с шага 1 (70%) — заметный. Главный пробел: путает «нет бинов» и «несколько бинов» — это разные исключения в Spring, на собесе любят спрашивать.
 
+---
+
+## Шаг 3: REST API — старт (28.08.2026, в процессе) 🟡
+
+**Микро-шаг 1:** `@RestController` + `@GetMapping("/hello")` → JSON.
+
+**Что делали:**
+1. Создал `controller/HelloController.java` с `@RestController` и методом `hello()` → возвращает `Map.of(...)`
+2. Упростил `NotificationHubApplication.main()` до стандартного `SpringApplication.run(...)`
+3. Запустил, дёрнул `http://localhost:8081/hello` → получил JSON `{"status":"ok","message":"Hello from boot"}`
+
+**Проблема №1 (поймали в реальном рантайме!):** `Parameter 0 of constructor in GreetingService required a bean of type MessageService that could not be found.`
+
+**Анализ:** `MessageService` — интерфейс, реализации `DevMessageService` (`@Profile("dev")`) и `ProdMessageService` (`@Profile("prod")`). Без `--spring.profiles.active` **ни одна не подходит** → бин не создаётся → `NoSuchBeanDefinitionException` (0 бинов, не «несколько»). **Ученик СРАЗУ вспомнил правило из шага 2 — выбрал правильное исключение!** 🎯
+
+**Решение:** запустил с `--spring.profiles.active=dev`. Без рефакторинга. **Это связка шага 2 (profiles) и шага 3 (REST) в реальности.**
+
+**Правило №1 курса №2 — закрыто:**
+- Спрашивали про `SpringApplication.run()` в естественном контексте шага 3 (как раз трогали `main`).
+- Ученик ответил: «запускается сервер и Spring блокирует main, чтобы он работал. Чтобы остановить — `context.close()`».
+- Оценка: **85%** — главное понял (Tomcat блокирует main), деталь (`context.close` не причина, а graceful shutdown) уточнили.
+
+**Шпаргалка (новое):**
+- `@RestController = @Controller + @ResponseBody` (на каждом методе)
+- Возвращаешь `Map`/`String`/DTO → Jackson автоматически в JSON
+- Spring Boot сам поднимает Tomcat на 8080 (мы в 8081 — поменяли в `application.properties`)
+
 ### Шпаргалка для собеса (обновляется)
 
 1. **`@SpringBootApplication` = `@Configuration` + `@EnableAutoConfiguration` + `@ComponentScan`**
