@@ -1,16 +1,22 @@
 package com.vasilii.notificationhub.controller;
 
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.vasilii.notificationhub.dto.MessageRequest;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
 public class HelloController {
 
-    @GetMapping("/hello")
-    public Map<String, String> hello() {
-        return Map.of("message", "Hello from boot", "status", "ok");
+    @PostMapping("/messages")
+    public Map<String, Object> createMessage(
+            @RequestBody MessageRequest req) {
+        return Map.of(
+                "received", true,
+                "to", req.getTo(),
+                "text", req.getText(),
+                "length", req.getText().length()
+        );
     }
 }

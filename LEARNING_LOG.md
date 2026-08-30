@@ -222,30 +222,32 @@
 
 ---
 
-## Шаг 3: REST API — старт (28.08.2026, в процессе) 🟡
+## Шаг 3: REST API — старт (28.08.2026 + 30.08.2026) ✅
 
 **Микро-шаг 1:** `@RestController` + `@GetMapping("/hello")` → JSON.
+**Микро-шаг 2:** `@PathVariable` (Long авто-конверсия) — `GET /users/{id}/orders/{orderId}`.
+**Микро-шаг 3:** `@RequestParam` + `defaultValue` — `GET /search?q=hello&page=5`.
+**Микро-шаг 4:** `@PostMapping` + `@RequestBody` + JSON DTO — `POST /messages`.
 
 **Что делали:**
-1. Создал `controller/HelloController.java` с `@RestController` и методом `hello()` → возвращает `Map.of(...)`
-2. Упростил `NotificationHubApplication.main()` до стандартного `SpringApplication.run(...)`
-3. Запустил, дёрнул `http://localhost:8081/hello` → получил JSON `{"status":"ok","message":"Hello from boot"}`
+1. Создан `controller/HelloController.java` с тремя методами (`/hello`, `/users/{id}/orders/{orderId}`, `/search`, `/messages`)
+2. Создан `dto/MessageRequest.java` (геттеры/сеттеры/пустой конструктор для Jackson)
+3. Получены 3 разных JSON-ответа через GET + 1 через POST
 
-**Проблема №1 (поймали в реальном рантайме!):** `Parameter 0 of constructor in GreetingService required a bean of type MessageService that could not be found.`
+**Проблемы в реальном рантайме (и это золото!):**
 
-**Анализ:** `MessageService` — интерфейс, реализации `DevMessageService` (`@Profile("dev")`) и `ProdMessageService` (`@Profile("prod")`). Без `--spring.profiles.active` **ни одна не подходит** → бин не создаётся → `NoSuchBeanDefinitionException` (0 бинов, не «несколько»). **Ученик СРАЗУ вспомнил правило из шага 2 — выбрал правильное исключение!** 🎯
+1. **28.08.2026 22:36** — `NoSuchBeanDefinitionException` из-за `@Profile` без активного профиля. Ученик СРАЗУ вспомнил правило из шага 2 (0 бинов ≠ несколько бинов). Решено через `--spring.profiles.active=dev`. **Связка шага 2 и шага 3 в реальности.**
+2. **30.08.2026 17:17** — POST вернул **405** из-за перепутанной аннотации (`@GetMapping` вместо `@PostMapping`). Ученик сам заметил — исправил. **Урок: 405 ≠ 404.** 405 = endpoint есть, метод не тот.
+3. **30.08.2026 17:18** — POST с пустым `text` вернул **500** из-за `NullPointerException` в `req.getText().length()`. Ученик сам предложил решение: **валидация через аннотации на DTO + `@Valid` в контроллере** — Separation of Concerns. **100% на мини-экзамене.** Это вход в шаг 4.
 
-**Решение:** запустил с `--spring.profiles.active=dev`. Без рефакторинга. **Это связка шага 2 (profiles) и шага 3 (REST) в реальности.**
+**Оценки по микро-экзаменам шага 3:**
+- Вопрос про `Long` авто-конверсию: **90%** (тип в сигнатуре + ConversionService)
+- Вопрос про `?param=` vs отсутствие: **90%** (пустая строка ≠ null)
+- Вопрос про уровни валидации: **100%** (выбрал `@Valid` + аннотации, объяснил почему)
 
-**Правило №1 курса №2 — закрыто:**
-- Спрашивали про `SpringApplication.run()` в естественном контексте шага 3 (как раз трогали `main`).
-- Ученик ответил: «запускается сервер и Spring блокирует main, чтобы он работал. Чтобы остановить — `context.close()`».
-- Оценка: **85%** — главное понял (Tomcat блокирует main), деталь (`context.close` не причина, а graceful shutdown) уточнили.
+**Средний балл шага 3: ~93%** 🎯 (лучший в курсе №2)
 
-**Шпаргалка (новое):**
-- `@RestController = @Controller + @ResponseBody` (на каждом методе)
-- Возвращаешь `Map`/`String`/DTO → Jackson автоматически в JSON
-- Spring Boot сам поднимает Tomcat на 8080 (мы в 8081 — поменяли в `application.properties`)
+**Известное ограничение:** `POST /messages` без `text` → 500 (NPE). Это **не баг**, а **точка входа в шаг 4** (валидация через `@Valid`). Ученик подтвердил коммит «ка есть» — фиксируем поведение, валидация на следующем шаге.
 
 ### Шпаргалка для собеса (обновляется)
 
@@ -254,9 +256,16 @@
 3. **`SpringApplication.run()` — обычный Java-метод**, делает несколько шагов и блокирует main-поток
 4. **В Boot всё, что было в Core, работает**: DI, scope, AOP, BPP, lifecycle
 5. **Конфиг-файлы:** `application.properties` ИЛИ `application.yml` (`.properties` приоритетнее при конфликте)
-6. **Кастомные свойства:** `@Value("${app.foo}")` для простых, `@ConfigurationProperties` для сложных (уже разобрано в Core 93%, вернёмся на шаге 4 как связку с DTO)
+6. **Кастомные свойства:** `@Value("${app.foo}")` для простых, `@ConfigurationProperties` для сложных (вернёмся на шаге 4 как связку с DTO)
 7. **Профили:** `application-{profile}.yml` + `--spring.profiles.active=dev` (или в `application.yml`)
 8. **`@Profile`:** бин создаётся только если активен указанный профиль. Не подошёл → бина **нет** → `NoSuchBeanDefinitionException`
 9. **`ctx.close()`** идиома для тестов: закрывает контекст, дёргает `@PreDestroy`, JVM выходит с кодом 0
+10. **`@RestController = @Controller + @ResponseBody`** — каждый метод сразу сериализует возвращаемое значение в HTTP-ответ
+11. **`@PathVariable` + тип в сигнатуре** → Spring сам конвертирует через `ConversionService` (String → Long и т.д.)
+12. **`@RequestParam(defaultValue=...)`** подставляет дефолт при **отсутствии** параметра (не при пустом значении `?x=` — там будет пустая строка `""`)
+13. **`@RequestBody` + Jackson** — Spring сам читает тело запроса, парсит JSON в DTO. **Нужен `Content-Type: application/json`** иначе 415
+14. **HTTP-ошибки**: 400 (битый запрос / валидация), 404 (endpoint нет), 405 (метод не тот), 415 (Content-Type неверный), 500 (баг в коде)
+15. **Tomcat thread pool** — HTTP-запросы обрабатываются в worker-потоках `[nio-8081-exec-N]`, не в main. По умолчанию 200 потоков
+16. **Separation of Concerns:** валидация — на DTO аннотациями + `@Valid` на границе (контроллер), бизнес-логика — в методе без `if (x == null)`
 
 ---
