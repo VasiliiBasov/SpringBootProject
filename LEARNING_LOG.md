@@ -267,6 +267,43 @@
 
 **Известное ограничение:** `POST /messages` без `text` → 500 (NPE). Это **не баг**, а **точка входа в шаг 4** (валидация через `@Valid`). Ученик подтвердил коммит «ка есть» — фиксируем поведение, валидация на следующем шаге.
 
+---
+
+## Шаг 4: DTO + валидация (30.08.2026 + 31.08.2026) ✅
+
+**Микро-шаг 1:** Аннотации на DTO (`@NotBlank`, `@Email`, `@Size`) + `@Valid` в контроллере.
+**Микро-шаг 2:** `@RestControllerAdvice` + `@ExceptionHandler(MethodArgumentNotValidException.class)` → 400.
+**Микро-шаг 3:** Мини-экзамен (70% — ответил про 400 и 404).
+**Микро-шаг 4:** Расширение: `HttpMessageNotReadableException` (400 malformed JSON) + `NoResourceFoundException` (404) + catch-all `Exception` (500 + `log.error`).
+
+**Что делали:**
+1. Добавлена зависимость `spring-boot-starter-validation` в `pom.xml` (Boot 4 **не подтягивает** её автоматически — урок: всегда проверять `pom.xml`)
+2. Добавлены аннотации на `MessageRequest`
+3. Написан `exception/GlobalExceptionHandler.java` — 4 `@ExceptionHandler` метода + SLF4J логгер
+4. **Импорт-баг:** ученик импортировал `java.util.logging.Logger` вместо `org.slf4j.Logger` — поправили, объяснил разницу JUL vs SLF4J
+5. Проверены 3 кейса: валидный (200), невалидный DTO (400), кривой JSON (400), несуществующий endpoint (404)
+
+**Проблема №2 (поймали в реальном рантайме!):** при попытке проверить type mismatch (`@PathVariable Long id` + `"abc"`) → 404 вместо 400. Причина: в `HelloController.java` остался только `POST /messages`, остальные методы были утеряны при предыдущих правках. Не восстанавливали — урок про шум в коде и важность явных коммитов.
+
+**Проблема №3 (ученик запутался в конце):** сказал «type mismatch → 404» вместо 400. Поправил. Имеет значение для собеса: 404 = «не нашёл ресурс», 400 = «запрос некорректный». Type mismatch — это 400, потому что URL совпал, но значение параметра кривое.
+
+**Оценки по микро-экзаменам шага 4:**
+- Какие ещё типы исключений ловить: **70%** (назвал 400 и 404, без деталей)
+- Почему Boot 4 убрал встроенный 404: **70%** (уловил суть про stacktrace, не назвал про сокрытие багов клиента)
+- type mismatch → какой код: **100%** (после правки)
+
+**Средний балл шага 4: ~85%** 🎯
+
+**Шпаргалка (новое):**
+- **`@Valid`** включает валидацию DTO через Hibernate Validator (Jakarta Bean Validation)
+- **`@RestControllerAdvice`** + **`@ExceptionHandler`** — глобальный обработчик ошибок для всего API
+- **`MethodArgumentNotValidException`** (400) → ошибки валидации полей DTO
+- **`HttpMessageNotReadableException`** (400) → кривой JSON / неверный Content-Type
+- **`MethodArgumentTypeMismatchException`** (400) → `@PathVariable Long` а пришёл `"abc"`
+- **`NoResourceFoundException`** (404) → endpoint не существует (в Boot 4 — 500 если не обработать явно!)
+- **Catch-all `Exception`** (500) + `log.error("...", ex)` — ОБЯЗАТЕЛЬНО логировать stacktrace
+- **SLF4J** — стандарт логирования в Spring, не `java.util.logging`
+
 ### Шпаргалка для собеса (обновляется)
 
 1. **`@SpringBootApplication` = `@Configuration` + `@EnableAutoConfiguration` + `@ComponentScan`**
@@ -285,5 +322,9 @@
 14. **HTTP-ошибки**: 400 (битый запрос / валидация), 404 (endpoint нет), 405 (метод не тот), 415 (Content-Type неверный), 500 (баг в коде)
 15. **Tomcat thread pool** — HTTP-запросы обрабатываются в worker-потоках `[nio-8081-exec-N]`, не в main. По умолчанию 200 потоков
 16. **Separation of Concerns:** валидация — на DTO аннотациями + `@Valid` на границе (контроллер), бизнес-логика — в методе без `if (x == null)`
+17. **Глобальный error handling:** `@RestControllerAdvice` + `@ExceptionHandler(MethodArgumentNotValidException.class)` для 400 (валидация). Аналогично для malformed JSON, type mismatch, not found, catch-all
+18. **Spring Boot 4** не обрабатывает 404 на несуществующий endpoint встроенно → возвращает 500, чтобы не маскировать баги клиента. Решение: явный `@ExceptionHandler(NoResourceFoundException.class)`
+19. **SLF4J** — стандарт логирования в Spring Boot, не `java.util.logging`. Logback — реализация по умолчанию
+20. **Catch-all `Exception` всегда с `log.error("...", ex)`** — иначе stacktrace теряется в проде
 
 ---
