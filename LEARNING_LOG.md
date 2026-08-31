@@ -294,6 +294,8 @@
 
 **Средний балл шага 4: ~85%** 🎯
 
+**Сессия 31.08.2026 (12:37–13:36, ~1.0 ч):** микро-шаг 4 — `GlobalExceptionHandler` расширен до 4-х хэндлеров (validation 400, malformed JSON 400, NoResourceFoundException 404, catch-all 500 + log.error). Мини-экзамен по шпаргалке ошибок (400 vs 404, типы исключений). Поправлен баг понимания ученика (type mismatch = 400, не 404). Коммит `9625451`. Ученик сказал «пауза» → **STOP**. Состояние проекта чистое (working tree clean).
+
 **Шпаргалка (новое):**
 - **`@Valid`** включает валидацию DTO через Hibernate Validator (Jakarta Bean Validation)
 - **`@RestControllerAdvice`** + **`@ExceptionHandler`** — глобальный обработчик ошибок для всего API
