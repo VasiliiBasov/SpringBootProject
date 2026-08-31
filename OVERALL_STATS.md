@@ -19,7 +19,7 @@
 | # | Проект | Тема | Статус | Шагов | Часов | Балл | Ссылка на дневник |
 |---|--------|------|--------|-------|-------|------|-------------------|
 | 1 | **SpringCoreProject** | Spring Core (без Boot) | ✅ Завершён | 12 / 12 | 17.2 | ~85% | `SpringCoreProject/COURSE_HANDBOOK.md` |
-| 2 | **SpringBootProject** | Spring Boot + JPA + Security | ⏳ В процессе | 3 / 15 | 2.9 (старт 28.08.2026 17:10) | 80% | `SpringBootProject/COURSE_HANDBOOK.md` |
+| 2 | **SpringBootProject** | Spring Boot + JPA + Security | ⏳ В процессе | 3 / 15 | 4.4 (старт 28.08.2026 17:10) | 80% | `SpringBootProject/COURSE_HANDBOOK.md` |
 
 ### Не использовать как проекты в этой статистике
 
@@ -38,8 +38,8 @@
 | Проект | Даты | Часов |
 |--------|------|-------|
 | SpringCoreProject (Core) | 24.08.2026 → 28.08.2026 | 17.2 |
-| SpringBootProject (Boot) | 28.08.2026 → _TBD_ | 2.9 (старт в 17:10) |
-| **ИТОГО** | | **20.1 ч** |
+| SpringBootProject (Boot) | 28.08.2026 → _TBD_ | 4.4 (старт в 17:10) |
+| **ИТОГО** | | **21.6 ч** |
 
 **Средняя скорость по Core:** ~1.4 ч/шаг (12 шагов за 17.2 ч)
 
