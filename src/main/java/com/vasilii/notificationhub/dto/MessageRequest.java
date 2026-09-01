@@ -5,9 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public class MessageRequest {
-    @NotBlank(message = "to обязательно")
-    @Email(message = "to должен быть валидным уьфшд")
-    private String to;
+    @NotBlank(message = "recipient обязательно")
+    @Email(message = "recipient должен быть валидным email")
+    private String recipient;
 
     @NotBlank(message = "text обязательно")
     @Size(max = 1000, message = "text слишком длинный (максимум 1000 символов)")
@@ -16,12 +16,12 @@ public class MessageRequest {
     public MessageRequest() {
     }
 
-    public String getTo() {
-        return to;
+    public String getRecipient() {
+        return recipient;
     }
 
-    public void setTo(String to) {
-        this.to = to;
+    public void setRecipient(String recipient) {
+        this.recipient = recipient;
     }
 
     public String getText() {
