@@ -2,4 +2,9 @@ app:
   greeting: Hello from DEV profile
 logging:
   level:
-    com.vasilii.notificationhun: DEBUG
+    com.vasilii.notificationhub: DEBUG
+
+# H2 Console: в Spring Boot 4 (4.0.8) web console не работает из коробки —
+# при enabled=true даёт 500 + StackOverflowError, при enabled=false — 404.
+# Решение: смотреть данные через GET /messages + логи Hibernate (show-sql=true).
+# Если понадобится — отдельный @Bean ServletRegistrationBean<WebServlet> для org.h2.server.web.WebServlet.

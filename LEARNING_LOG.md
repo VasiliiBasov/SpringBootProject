@@ -442,3 +442,81 @@ registry.addViewController("/h2-console").setViewName("redirect:/h2-console/");
 28. **Contribution graph** засчитывает коммит только если author/committer email привязан к GitHub-аккаунту (или используется `username@users.noreply.github.com`)
 
 ---
+
+## Шаг 5, микро-шаг 2 — ФИНАЛ (02.09.2026, ~0.5 ч)
+
+### Что произошло
+
+Приняли зависшую задачу шага 5. Изначально в `WebConfig.java` было `addViewController("/h2-console", "forward:/h2-console")` — создавало бесконечный forward (`Circular view path`).
+
+Сначала я предложил **вариант А** (`redirect:/h2-console/`), но Василий усомнился: «браузер выдаёт 500 и есть зацикленность». Решил проверить проект целиком.
+
+### Что нашли в проекте (разбор)
+
+Прочитали все 11 java-файлов + `pom.xml` + `application*.properties/yml`. Обнаружили **три проблемы**, не одну:
+
+**Проблема 1 — `forward:` петля** (та, что уже знали):
+`forward:/h2-console` → запрос на тот же URL → бесконечная петля.
+
+**Проблема 2 — `addViewController("/h2-console/**")` перехватывает всё под `/h2-console`**:
+Даже подпути H2 servlet (`/h2-console/login.do`, `/h2-console/css/...`) никогда не доходят до самого H2 servlet — наш `addViewController` их перехватывает и форвардит обратно.
+
+**Проблема 3 — `redirect:/h2-console/` НЕ решает проблему полностью** (та, что обнаружил Василий):
+Даже если заменить forward на redirect, всё равно хрупко: правило для `/h2-console` ловит запрос, redirect на `/h2-console/` — следующий запрос может опять попасть в правило для `/h2-console/`.
+
+### Что сделали
+
+Выбрали **вариант Б** (рекомендация из `LEARNING_LOG.md`): **удалить `WebConfig.java` целиком**. Идея: Spring Boot 4 сам регистрирует H2 web servlet через автоконфигурацию, ничего ручного не надо.
+
+### Что выяснилось вживую
+
+Запустили Boot, проверили HTTP:
+- `WebConfig.java` удалён ✅
+- `GET /messages` → 200 ✅
+- `GET /h2-console` → **500** ❌ (петля осталась!)
+- `GET /totally-unknown` → 404 ✅
+
+То есть **`WebConfig` действительно не при чём** — петля живёт и без него.
+
+### Истинный корень (для собеса!)
+
+В Spring Boot **4.0.8 + Tomcat 11** автоконфигурация H2 web console **не подтягивается автоматически** (в логе старта нет ни одной строки про регистрацию H2 servlet). При этом DispatcherServlet всё равно ловит запрос на `/h2-console` (видимо, через `WelcomePageHandlerMapping` или похожую логику), не находит mapping'а, пытается отрендерить через `InternalResourceView` → forward на `/` → снова DispatcherServlet → рекурсия в `ApplicationHttpRequest.getSession()` → `StackOverflowError` на глубине ~400 стек-фреймов.
+
+Стек (верхушка):
+```
+DispatcherServlet.processDispatchResult
+  → InternalResourceView.renderMergedOutputModel
+    → ApplicationDispatcher.forward
+      → HttpServletRequestWrapper.getSession  ← рекурсия
+        → ApplicationHttpRequest.getSession
+          → HttpServletRequestWrapper.getSession
+            → ... ∞
+```
+
+### Финальное решение
+
+H2 web console в этом проекте **отключена полностью**:
+- `application.properties`: `spring.h2.console.enabled` закомментирован
+- `application-dev.yml`: комментарий с пояснением, что H2 console в Boot 4 не работает из коробки
+
+Для отладки используем:
+- `GET /messages` через REST API
+- `spring.jpa.show-sql=true` — Hibernate логирует все SQL-запросы
+
+### Что НЕ сделали и почему
+
+- **`H2ConsoleRedirectTest` — отменён.** Тест проверял бы, что `/h2-console` даёт 302. Но H2 console не работает в Boot 4 → тест не имеет смысла. Вернёмся к идее тестов на шаге 12 (Testing), там будем писать `ServletRegistrationBean<WebServlet>` для H2 и тестировать его — это и полезнее, и более «в реальном проекте»-стиле.
+
+### Шпаргалка (добавлено)
+
+- **В Spring Boot 4 H2 web console НЕ работает из коробки** (автоконфиг убран). Включение через `spring.h2.console.enabled=true` даёт StackOverflowError, без него — 404
+- **Шаблон forward-петли** в Spring MVC: если DispatcherServlet ловит URL без mapping'а и пытается отдать через `InternalResourceView` (forward на `/`), возникает бесконечная рекурсия. Симптом: `StackOverflowError` в `HttpServletRequestWrapper.getSession()`
+- **Диагностический приём**: всегда проверять `/totally-unknown` рядом с проблемным URL — если он даёт 404, а проблемный даёт 500, петля специфична именно для проблемного URL (значит, кто-то на него отзывается)
+- **Для реального проекта H2 console почти не нужна**: в проде категорически нет, в dev хватает логов Hibernate + REST API. Если нужна — `ServletRegistrationBean<WebServlet>` с `org.h2.server.web.WebServlet`
+
+29. **Spring Boot 4 не содержит автоконфигурации H2 web console** (в отличие от Boot 3.x). Если нужен GUI — регистрировать `ServletRegistrationBean<WebServlet>` вручную
+30. **Forward-петля в Spring MVC** — симптом: `StackOverflowError` в `getSession()`. Причина: DispatcherServlet не находит mapping'а и пытается отдать через `InternalResourceView` → forward → снова DispatcherServlet → ∞
+31. **`GET /totally-unknown` рядом с проблемным URL** — диагностический приём для локализации forward-петли
+32. **В реальном проекте H2 console обычно не нужна** — для dev хватает `spring.jpa.show-sql=true` + REST API
+
+---

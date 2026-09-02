@@ -11,10 +11,10 @@
 ## 📌 Где мы сейчас
 
 **Текущий шаг:** 5 / 15 ✅ — Spring Data JPA: H2 in-memory + JpaRepository (micro-1) + фикс /h2-console loop (micro-2) ✅
-**Следующий шаг:** шаг 6 — Транзакции: `@Transactional` (связь с AOP из курса №1). Либо сначала закрыть зависшую задачу `H2ConsoleRedirectTest` (тест ещё не написан, см. `HANDOFF_TO_AGENT.md`)
+**Следующий шаг:** шаг 6 — Транзакции: `@Transactional` (связь с AOP из курса №1).
 **Процент:** 33% (5/15) — шаги 1, 2, 3, 4, 5 закрыты
 
-**Активная зависшая задача:** фикс `/h2-console` петли в `WebConfig.java` сделан теоретически (вариант А — `redirect:/h2-console/`), но **тест `H2ConsoleRedirectTest.java` ещё не написан учеником**. Подробности в `LEARNING_LOG.md` (раздел «Шаг 5, микро-шаг 2») и `HANDOFF_TO_AGENT.md`.
+**Активная зависшая задача:** фикс `/h2-console` петли — **закрыт** (см. `LEARNING_LOG.md`, раздел «Шаг 5, микро-шаг 2 — ФИНАЛ»). Итог: `WebConfig.java` удалён целиком, но петля оказалась в Spring Boot 4.0.8 (нет автоконфига H2 web console + DispatcherServlet forward-петля на любой URL без mapping'а). H2 console в проекте отключена полностью, отладка через `GET /messages` + логи Hibernate. `H2ConsoleRedirectTest` отменён — на шаге 12 (Testing) разберём `ServletRegistrationBean<WebServlet>` и напишем нормальный тест.
 
 ## 🔑 Шпаргалка для следующего открытия (ПРОЧИТАТЬ ПЕРВЫМ ДЕЛОМ)
 

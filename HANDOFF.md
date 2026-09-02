@@ -43,6 +43,10 @@
 
 **Известная мелочь:** `HelloController.java` сейчас содержит только `POST /messages` — другие методы (`/hello`, `/search`, `/users/{id}/orders/{orderId}`) были утеряны при правках. Для шага 6+ понадобится, восстановим по мере необходимости.
 
+**Известная проблема (Spring Boot 4.0.8):** `GET /h2-console` даёт 500 + StackOverflowError даже без `WebConfig`. Корень: Spring Boot 4 не содержит автоконфигурации H2 web console (в отличие от Boot 3.x) + DispatcherServlet forward-петля через `InternalResourceView`. Решение: H2 console отключена полностью, отладка через `GET /messages` + `spring.jpa.show-sql=true`. `H2ConsoleRedirectTest` отменён — на шаге 12 (Testing) разберём `ServletRegistrationBean<WebServlet>` и напишем нормальный тест. Подробности в `LEARNING_LOG.md`, раздел «Шаг 5, микро-шаг 2 — ФИНАЛ».
+
+**Изменено 02.09.2026:** `WebConfig.java` удалён целиком (вариант Б). Каталог `config/` теперь пустой.
+
 **Что сделано в шаге 3 микро-шаг 1:**
 - Создан `controller/HelloController.java` с `@RestController` + `@GetMapping("/hello")` → `Map.of(...)`
 - Упрощён `NotificationHubApplication.main()` до стандартного `SpringApplication.run(...)`

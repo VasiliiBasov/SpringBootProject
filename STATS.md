@@ -44,8 +44,9 @@
 | 7 | 31.08.2026 | Шаг 4: продолжение — мини-экзамен (не ответил, ушёл на паузу) | 1.0 |
 | 8 | 31.08.2026 | Шаг 4: расширение GlobalExceptionHandler (malformed JSON + 404 + 500 fallback) + мини-экзамен + коммит | 1.0 |
 | 9 | 02.09.2026 | Шаг 5: JPA + H2 in-memory (JpaRepository save/read) + фикс /h2-console loop (forward→redirect) + урок @WebMvcTest vs @SpringBootTest + диагностика contribution graph (rewrite истории git-history с vasilii@local → vasekbasovv@mail.ru, force-push) | 2.5 |
+| 10 | 02.09.2026 | Шаг 5 (финал): удалили WebConfig.java целиком, но петля /h2-console осталась — корень в Spring Boot 4.0.8 (нет автоконфига H2 web console, DispatcherServlet forward-петля). H2 console отключена полностью, отладка через GET /messages + show-sql. H2ConsoleRedirectTest отменён (тест не имеет смысла) | 0.5 |
 
-**Итого:** 7.9 ч (старт курса №2 — 28.08.2026 17:10, последняя активность 02.09.2026)
+**Итого:** 8.4 ч (старт курса №2 — 28.08.2026 17:10, последняя активность 02.09.2026)
 
 ---
 
