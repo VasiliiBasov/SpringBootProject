@@ -10,14 +10,17 @@
 
 ## 📌 Где мы сейчас
 
-**Текущий шаг:** 3 / 15 — REST API 🟡 (теория микро-шага 1, до паузы)
-**Следующий шаг:** продолжить шаг 3 — `@RestController` + `@GetMapping("/hello")`, практика ученика
-**Процент:** 13% (2/15) — шаг 3 не считается пройденным до практики
+**Текущий шаг:** 5 / 15 ✅ — Spring Data JPA: H2 in-memory + JpaRepository (micro-1) + фикс /h2-console loop (micro-2) ✅
+**Следующий шаг:** шаг 6 — Транзакции: `@Transactional` (связь с AOP из курса №1). Либо сначала закрыть зависшую задачу `H2ConsoleRedirectTest` (тест ещё не написан, см. `HANDOFF_TO_AGENT.md`)
+**Процент:** 33% (5/15) — шаги 1, 2, 3, 4, 5 закрыты
+
+**Активная зависшая задача:** фикс `/h2-console` петли в `WebConfig.java` сделан теоретически (вариант А — `redirect:/h2-console/`), но **тест `H2ConsoleRedirectTest.java` ещё не написан учеником**. Подробности в `LEARNING_LOG.md` (раздел «Шаг 5, микро-шаг 2») и `HANDOFF_TO_AGENT.md`.
 
 ## 🔑 Шпаргалка для следующего открытия (ПРОЧИТАТЬ ПЕРВЫМ ДЕЛОМ)
 
-**Если ученик написал «прочитай прогресс» — прочитай ОБЯЗАТЕЛЬНО все 7 файлов в таком порядке:**
+**Если ученик написал «прочитай прогресс» — прочитай ОБЯЗАТЕЛЬНО все 8 файлов в таком порядке:**
 
+0. **`HANDOFF_TO_AGENT.md`** ⚠️ — **н**юансы работы с учеником от предыдущего агента (если есть). Важнее остальных, потому что содержит личные наблюдения о стиле общения с Василием. **Удалить после первой полноценной сессии.**
 1. **`COURSE_HANDBOOK.md`** — master-файл с историей
 2. **`OVERALL_STATS.md`** — сводка по всем проектам
 3. **`HANDOFF.md`** — краткое резюме
@@ -59,7 +62,7 @@
 4. **DTO + валидация** (`@Valid`, `@NotNull`)
 
 ### Блок 2: Spring Data JPA (шаги 5–8)
-5. **Spring Data JPA: `@Entity`, `JpaRepository`** (H2 in-memory)
+5. **Spring Data JPA: `@Entity`, `JpaRepository`** (H2 in-memory) + фикс `/h2-console` loop (микро-шаг 2 — `forward:` vs `redirect:`, урок для собеса) ✅
 6. **Транзакции: `@Transactional`** (связь с AOP из курса №1)
 7. **Миграции: Flyway/Liquibase**
 8. **Query: JPQL, native, Specification**
@@ -70,7 +73,7 @@
 11. **Method Security: `@PreAuthorize`, `@Secured`**
 
 ### Блок 4: Testing + Production (шаги 12–14)
-12. **Тестирование** — `@SpringBootTest`, `MockMvc`, `Testcontainers`
+12. **Тестирование** — `@SpringBootTest`, `MockMvc`, `Testcontainers` (базу заложили в шаге 5 — `H2ConsoleRedirectTest` с `@WebMvcTest` + `@SpringBootTest`)
 13. **Логирование + мониторинг** — SLF4J, Micrometer, Actuator
 14. **Кэширование** — `@Cacheable`, `@CacheEvict`
 

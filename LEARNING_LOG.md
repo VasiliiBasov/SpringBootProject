@@ -330,3 +330,115 @@
 20. **Catch-all `Exception` всегда с `log.error("...", ex)`** — иначе stacktrace теряется в проде
 
 ---
+
+---
+
+## Шаг 5: JPA + H2 in-memory + фикс /h2-console loop (сделан 02.09.2026, ~2.5 ч)
+
+### Микро-шаг 1: JPA + H2 in-memory DB, save/read via JpaRepository
+
+**Что сделано:**
+- Добавлены зависимости в `pom.xml`: `spring-boot-starter-data-jpa` + `h2` (runtime scope)
+- `entity/MessageLog.java` — JPA-entity (`@Entity`, `@Id @GeneratedValue`, поля для логов)
+- `repository/MessageLogRepository.java` — extends `JpaRepository<MessageLog, Long>` (готовые CRUD из коробки)
+- `service/MessageService.java` — бизнес-слой с методами `save(...)` и `findAll()`, инжектит `MessageLogRepository`
+- Контроллер дёргает сервис (не репозиторий напрямую — соблюдаем слои)
+- `application.properties`: `spring.datasource.url=jdbc:h2:mem:notificationhub`, `spring.jpa.hibernate.ddl-auto=create-drop` (схема создаётся из entity при старте, дропается при остановке)
+
+**Теория (короткая):**
+- **JPA (Jakarta Persistence API)** — спецификация для маппинга Java-объектов на таблицы БД. Реализация в Spring Boot — **Hibernate**
+- **`JpaRepository<T, ID>`** даёт готовые методы: `save()`, `findById()`, `findAll()`, `deleteById()`, `count()`, ... — без реализации
+- **`ddl-auto=create-drop`** удобно для dev/test, в проде использовать `validate` или `none` (миграции — отдельная тема, шаг 7+)
+- **H2 in-memory** — БД живёт в RAM, исчезает при остановке JVM. Идеально для разработки и тестов
+
+### Микро-шаг 2: фикс петли `/h2-console`
+
+**Проблема (поймана в реальном рантайме):**
+`WebConfig.java` содержал:
+```java
+registry.addViewController("/h2-console").setViewName("forward:/h2-console");
+```
+Это **бесконечная петля**: запрос `GET /h2-console` → forward на тот же `/h2-console` → forward опять → ∞. В логах Tomcat:
+```
+Circular view path [h2-console]: would dispatch back to the current handler URL [/h2-console] again
+```
+В браузере — пустая страница или `ERR_TOO_MANY_REDIRECTS`.
+
+**Решение — вариант А (минимальный):**
+```java
+registry.addViewController("/h2-console").setViewName("redirect:/h2-console/");
+```
+Одна строка изменена. `redirect:` — это HTTP-redirect (новый запрос от клиента), а не внутренний forward → петли нет.
+
+**Теория — `forward:` vs `redirect:` (КЛЮЧЕВАЯ для собеса):**
+
+| | `forward:` | `redirect:` |
+|---|---|---|
+| Тип | Внутренний forward на стороне сервера | HTTP-redirect (302) клиенту |
+| Новый HTTP-запрос? | ❌ нет | ✅ да (клиент делает GET) |
+| URL в браузере | не меняется | меняется на новый |
+| Данные запроса (атрибуты, параметры) | сохраняются | теряются (это новый запрос) |
+| Когда использовать | внутренняя маршрутизация в рамках одного handler | «перенаправить пользователя на другой URL» (PRG-паттерн после POST) |
+| Может создать петлю? | ✅ да (если forward на свой же URL) | ❌ нет (каждый redirect — новый запрос, браузер видит смену URL) |
+
+**Ключевое правило:** `forward` внутри одного handler URL — это петля. `redirect` — безопасен по построению.
+
+**Урок про тесты — `@WebMvcTest` vs `@SpringBootTest` (для собеса):**
+
+| | `@WebMvcTest` | `@SpringBootTest` |
+|---|---|---|
+| Что поднимает | только web-слой (контроллеры, `WebMvcConfigurer`, фильтры) | весь контекст (web + JPA + H2 + бины) |
+| Скорость | быстро (~0.5 сек) | медленно (2-5 сек) |
+| Что доступно в `@Autowired` | только web-бины | бины всех слоёв |
+| Когда использовать | unit-тест на HTTP-роутинг / redirect | интеграционный тест с реальной БД / внешними сервисами |
+| Аннотация для MockMvc | идёт в комплекте | нужен ещё `@AutoConfigureMockMvc` |
+
+**Правило выбора:** если тест падает из-за БД, но ты проверяешь только URL → `@WebMvcTest`. Если нужно проверить реальное взаимодействие с БД → `@SpringBootTest`.
+
+**Альтернативный вариант Б (для реального проекта):** удалить `WebConfig` целиком, потому что H2 Console сам обрабатывает `/h2-console`. Решение **А** лучше для учебного проекта (полезный опыт с forward/redirect), **Б** — для продакшна (минимализм).
+
+### Параллельная задача: диагностика contribution graph
+
+**Симптом:** коммиты на GitHub есть, но contribution graph их не показывает.
+
+**Причина:** `git config user.email = vasilii@local` — это не email, GitHub не может сопоставить с аккаунтом → коммиты не засчитываются в contributions.
+
+**Решение:**
+1. Email изменён в локальном и глобальном git-конфиге на `vasekbasovv@mail.ru` (привязан к GitHub-аккаунту)
+2. История переписана через `git filter-repo`: `vasilii@local → vasekbasovv@mail.ru` во всех author и committer email во всех коммитах
+3. Сделал `git push --force` в `origin/main` (новый HEAD = `339f3d0`, старый `9559ec4` ушёл в небытие)
+4. Бэкап `.git.backup_20260902_024500/` лежит на диске — не трогать минимум неделю
+
+**Теория для собеса:**
+- GitHub contribution graph считает коммиты только если author email совпадает с одним из привязанных к аккаунту (или `username@users.noreply.github.com`)
+- 3 типичные причины "no activity": (1) push в org / чужой аккаунт, (2) коммиты в форке чужого репо, (3) email mismatch
+- `git filter-repo` — современная замена `filter-branch`, рекомендована самим git-ом для массовых операций на историей (переименование email, удаление файла из всей истории, и т.д.)
+- `--force-with-lease` — защищённый force-push: отказывается пушить, если на remote кто-то успел запушить что-то поверх. Безопаснее обычного `--force`
+
+### Шпаргалка (новое):
+
+- **JPA = спецификация**, Hibernate = реализация в Spring Boot по умолчанию
+- **`JpaRepository<T, ID>`** даёт готовые CRUD-методы из коробки (`save`, `findById`, `findAll`, `deleteById`, `count`, ...)
+- **Слои:** Controller → Service → Repository → DB. Контроллер НЕ дёргает репозиторий напрямую
+- **H2 in-memory** (`jdbc:h2:mem:<name>`) — БД в RAM, исчезает при остановке JVM. Для dev/test
+- **`ddl-auto=create-drop`** — Hibernate создаёт схему из entity при старте, дропает при остановке. **Только для dev**, в проде `validate` или миграции (Flyway/Liquibase, шаг 7+)
+- **`forward:` vs `redirect:`** — forward внутри одного handler URL = петля, redirect = безопасный HTTP-302
+- **`@WebMvcTest`** — только web-слой, быстро. **`@SpringBootTest`** + `@AutoConfigureMockMvc` — весь контекст, медленно
+- **`git filter-repo`** — современная замена `filter-branch`. Уже установлен в системе (Python 3.13 + `pip install git-filter-repo`)
+- **`git push --force-with-lease`** — безопасный force-push (отказывается, если remote сдвинулся)
+- **Contribution graph** считает коммиты только если author email привязан к GitHub-аккаунту
+
+### Шпаргалка для собеса (обновляется)
+
+1-20. [прежние пункты без изменений]
+
+21. **`@WebMvcTest`** — slice-тест только web-слоя (контроллеры, `WebMvcConfigurer`). Быстрый, без БД
+22. **`@SpringBootTest` + `@AutoConfigureMockMvc`** — интеграционный тест всего контекста + MockMvc. Медленный, но реалистичный
+23. **`JpaRepository<T, ID>`** — готовые CRUD из коробки (`save`, `findById`, `findAll`, `deleteById`, `count`). Кастомные методы — через имя метода (`findByName`) или `@Query`
+24. **JPA = спецификация** (Jakarta Persistence), **Hibernate** = реализация по умолчанию в Spring Boot
+25. **`forward:` vs `redirect:`** — forward = серверная маршрутизация, сохраняет request attributes. Redirect = HTTP-302, новый запрос от клиента, атрибуты теряются. **Forward внутри одного handler URL = бесконечная петля**
+26. **`git filter-repo`** — рекомендованная замена `filter-branch` для массовых операций с историей (переименование email, удаление секрета из всей истории)
+27. **`--force-with-lease`** — защищённый force-push. Отказывается пушить, если на remote кто-то успел запушить поверх
+28. **Contribution graph** засчитывает коммит только если author/committer email привязан к GitHub-аккаунту (или используется `username@users.noreply.github.com`)
+
+---

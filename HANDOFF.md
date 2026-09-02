@@ -24,22 +24,24 @@
 
 ## 📊 Текущий статус
 
-- **Шаг:** 4 / 15 ✅ (DTO + валидация + глобальный error handler)
+- **Шаг:** 5 / 15 ✅ (JPA + H2 in-memory + фикс /h2-console loop + диагностика contribution graph)
 - **Дата старта курса №2:** 28.08.2026 17:10
-- **Дата последнего обновления:** 31.08.2026 13:36
-- **Средний балл по курсу №2:** **~82%** (7 тем: 60+90+60+90+95+85+85 = 565/7 = 80.7%, рост за шаг 4)
+- **Дата последнего обновления:** 02.09.2026
+- **Средний балл по курсу №2:** **~82%** (7 тем: 60+90+60+90+95+85+85 = 565/7 = 80.7%, без штрафа за шаг 5 — там был разбор продвинутой проблемы, не мини-экзамен)
 - **Средний балл по шагу 2:** 80%
 - **Средний балл по шагу 3:** ~93% (лучший в курсе №2)
 - **Средний балл по шагу 4:** ~85%
-- **Всего потрачено:** 5.4 ч
+- **Всего потрачено:** 7.9 ч
 
-**Что сделано в шаге 4 (целиком):**
-- 4 микро-шага ✅: `@Valid` + аннотации на DTO, `@RestControllerAdvice` базовый, мини-экзамен, расширение до 4-х хэндлеров
-- Зависимость `spring-boot-starter-validation` в `pom.xml`
-- `exception/GlobalExceptionHandler.java` — ловит: валидацию (400), malformed JSON (400), 404 not found, catch-all (500 + log.error)
-- SLF4J (не JUL!) для логирования
+**Что сделано в шаге 5 (целиком):**
+- 2 микро-шага ✅
+  - **micro-1**: JPA + H2 in-memory DB. Зависимости `spring-boot-starter-data-jpa` + `h2` в `pom.xml`. `entity/MessageLog.java` (JPA-entity), `repository/MessageLogRepository.java` (extends `JpaRepository<MessageLog, Long>`), `service/MessageService.java` (save/findAll), контроллер дёргает сервис. `spring.jpa.hibernate.ddl-auto=create-drop` для dev-режима.
+  - **micro-2**: фикс петли `/h2-console`. В `WebConfig.java` было `addViewController("/h2-console", "forward:/h2-console")` — создавало бесконечный forward (Circular view path). Решение: **вариант А** (минимальный) — `redirect:/h2-console/` одной строкой. Тесты: `H2ConsoleRedirectTest` (планировался, @WebMvcTest + @SpringBootTest).
+- Диагностика contribution graph: коммиты не показывались, потому что `git config user.email = vasilii@local` не совпадал с email GitHub. Решено через `git filter-repo` (rewrite истории всех коммитов: `vasilii@local → vasekbasovv@mail.ru`), force-push в `origin/main`. Новый HEAD = `339f3d0`. Бэкап: `.git.backup_20260902_024500/` (на диске, **не трогать минимум неделю**).
 
-**Известная мелочь:** `HelloController.java` сейчас содержит только `POST /messages` — другие методы (`/hello`, `/search`, `/users/{id}/orders/{orderId}`) были утеряны при правках. Для шага 5+ понадобится, восстановим по мере необходимости.
+**Известная мелочь:** `application-dev.yml` содержит опечатку — `notificationhun` вместо `notificationhub` в `logging.level`. Не критично (логирование и так работает), но при случае поправить.
+
+**Известная мелочь:** `HelloController.java` сейчас содержит только `POST /messages` — другие методы (`/hello`, `/search`, `/users/{id}/orders/{orderId}`) были утеряны при правках. Для шага 6+ понадобится, восстановим по мере необходимости.
 
 **Что сделано в шаге 3 микро-шаг 1:**
 - Создан `controller/HelloController.java` с `@RestController` + `@GetMapping("/hello")` → `Map.of(...)`
