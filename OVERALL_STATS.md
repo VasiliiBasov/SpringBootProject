@@ -19,7 +19,7 @@
 | # | Проект | Тема | Статус | Шагов | Часов | Балл | Ссылка на дневник |
 |---|--------|------|--------|-------|-------|------|-------------------|
 | 1 | **SpringCoreProject** | Spring Core (без Boot) | ✅ Завершён | 12 / 12 | 17.2 | ~85% | `SpringCoreProject/COURSE_HANDBOOK.md` |
-| 2 | **SpringBootProject** | Spring Boot + JPA + Security | ⏳ В процессе | 6 / 15 | 8.8 (старт 28.08.2026 17:10, последняя активность 04.09.2026) | 84% (средний по шагам) | `SpringBootProject/COURSE_HANDBOOK.md` |
+| 2 | **SpringBootProject** | Spring Boot + JPA + Security | ⏳ В процессе | 6 / 15 | 12.0 (старт 28.08.2026 17:10, последняя активность 04.09.2026) | 85% (средний по шагам) | `SpringBootProject/COURSE_HANDBOOK.md` |
 
 ### Не использовать как проекты в этой статистике
 
@@ -38,8 +38,8 @@
 | Проект | Даты | Часов |
 |--------|------|-------|
 | SpringCoreProject (Core) | 24.08.2026 → 28.08.2026 | 17.2 |
-| SpringBootProject (Boot) | 28.08.2026 → _TBD_ | 8.8 (старт в 17:10, активность до 04.09.2026) |
-| **ИТОГО** | | **26.0 ч** |
+| SpringBootProject (Boot) | 28.08.2026 → _TBD_ | 12.0 (старт в 17:10, активность до 04.09.2026) |
+| **ИТОГО** | | **29.2 ч** |
 
 **Средняя скорость по Core:** ~1.4 ч/шаг (12 шагов за 17.2 ч)
 
@@ -69,7 +69,7 @@
 - [x] REST API: `@RestController`, `@GetMapping` (шаг 3, 🟢 93%)
 - [x] DTO + валидация, `@RestControllerAdvice` (шаг 4, 🟢 85%)
 - [x] Spring Data JPA: `@Entity`, `JpaRepository` (шаг 5, ✅ разбор продвинутой проблемы)
-- [x] `@Transactional` (шаг 6 micro-1, 🟢 78%) — основной rollback-механизм крепко (90%), propagation / `AFTER_COMMIT` / outbox — подтянуть
+- [x] `@Transactional` (шаг 6 micro-1 + micro-2, 🟢 ~83%) — rollback-механизм (90%), REQUIRES_NEW + self-injection (95%). Подтянуть: outbox-паттерн, остальные режимы propagation (NESTED/MANDATORY/etc.)
 - [ ] Миграции (Flyway/Liquibase)
 - [ ] JPQL, native, Specification
 - [ ] Spring Security basics
@@ -99,7 +99,7 @@
 | Несколько конструкторов в бине | Core, шаг 1 | 🔴 30% | Разобрать в Boot-курсе на примере `@Service` с двумя конструкторами |
 | Lazy initialization (`@Lazy`) | Core, не разбирали | 🔴 10% | Ввести в Boot-курсе как способ ускорить старт |
 | `ApplicationContext` internals | Core, не разбирали | 🔴 10% | Разобрать в Boot-курсе (BeanFactoryPostProcessor, Environment) |
-| Транзакции | Boot, шаг 6 | 🟡 65–90% | Основной rollback крепко (90%). Propagation и `@TransactionalEventListener(AFTER_COMMIT)` — подтянуть на шаге 6/8 |
+| Транзакции | Boot, шаг 6 | 🟢 65–95% | Основной rollback (90%) и REQUIRES_NEW + self-injection (95%) крепко. `@TransactionalEventListener(AFTER_COMMIT)` и outbox-паттерн (по 65%) — подтянуть на шаге 8 |
 | Spring Security | Core, не разбирали | — | Boot-курс, шаги 9–11 (полностью новая тема) |
 | Spring Data JPA | Boot, шаг 5 | ✅ ~85% | `JpaRepository`, entity, findBy — крепко. JPQL/спецификации — на шаге 8 |
 | Тестирование | Core, не разбирали | — | Boot-курс, шаг 12 (полностью новая тема) |

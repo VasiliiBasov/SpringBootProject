@@ -12,11 +12,19 @@
 
 ## 📌 Где мы сейчас
 
-**Текущий шаг:** 6 / 15 — Транзакции: `@Transactional` (micro-1 ✅, мини-экзамен ✅, средний 78%). Коммит `b5e9342` запушен.
-**Следующий шаг:** шаг 6 (продолжение) или шаг 7 — Flyway/Liquibase. Решение за учеником.
-**Процент:** 40% (6/15) — шаги 1, 2, 3, 4, 5, 6 (micro-1) закрыты
+**Текущий шаг:** 6 / 15 — Транзакции: `@Transactional` (micro-1 ✅ + micro-2 ✅, мини-экзамены ✅, средний ~83%). Коммит шага 6 micro-2 **не закоммичен** (ученик ушёл на сегодня).
+**Следующий шаг:** шаг 7 — Flyway/Liquibase (завтра, по решению ученика).
+**Процент:** 40% (6/15) — шаги 1, 2, 3, 4, 5, 6 (micro-1 + micro-2) закрыты
 
-**Что сделано в шаге 6 (micro-1):**
+**Что сделано в шаге 6 (micro-2, 04.09.2026):**
+- ✅ `NotificationService` дополнен self-injection через `@Lazy` (поле `self`, конструктор с 3-м параметром)
+- ✅ Добавлен метод `auditSend(...)` с `@Transactional(propagation = REQUIRES_NEW)` — пишет запись с префиксом `[audit]` в `messages`
+- ✅ Ученик **сам** догадался поменять местами `emailSender.send` и `self.auditSend` — иначе audit не успевал закоммититься до исключения на dev-fail
+- ✅ Проверено на `dev-fail`: в БД **1 запись** `[audit]` (от auditSend, REQUIRES_NEW), основная запись из `send` откатилась
+- ✅ Теория propagation: REQUIRED / REQUIRES_NEW / NESTED / MANDATORY / SUPPORTS / NOT_SUPPORTED / NEVER
+- ✅ Мини-экзамен (1 вопрос, **95%**): «откатится ли audit-запись при падении внешней TX» — ответил правильно
+
+**Что сделано в шаге 6 (micro-1, 04.09.2026):**
 - ✅ Архитектура Controller → Service → Repository починена (`HelloController` дёргает `notificationService.send(...)`, а не `repository.save` напрямую)
 - ✅ `EmailSender` интерфейс + 2 реализации по `@Profile`:
   - `dev` → `ConsoleEmailSender` (печатает в stdout)
@@ -30,12 +38,15 @@
 **Мини-экзамен шага 6 (04.09.2026):**
 - Q1 (rollback при исключении из `@Transactional`-метода): 🟢 90%
 - Q2 (propagation + `@TransactionalEventListener(AFTER_COMMIT)`): 🟡 65%
-- **Средний:** 🟢 **78%**
+- Q3 (REQUIRES_NEW + падение внешней TX — откатится ли audit): 🟢 95%
+- **Средний по 3 экзаменам:** **(90+65+95)/3 = 83.3%** → 🟢 крепко
 
-**Пробелы для подтяжки на шаге 6/8:**
+**Пробелы для подтяжки на шаге 8 (Query + спецификации):**
 - Где публикуются события (сервис, не сендер)
 - Outbox-паттерн для надёжной доставки событий после коммита
-- Propagation (`REQUIRED` vs `REQUIRES_NEW`)
+- Propagation REQUIRED vs REQUIRES_NEW (частично — 95% на экзамене, но без других режимов)
+
+**Завтра: шаг 7 — Flyway/Liquibase.** Аудит-таблицу вынесем в отдельную миграцию `V2__create_audit_log.sql`, костыль `[audit] ...` в MessageLog уйдёт.
 
 **Зависших задач нет.**
 

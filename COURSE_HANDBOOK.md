@@ -631,8 +631,8 @@ target/
 | Курс | Тема | Часов | Шагов | Балл |
 |---|---|---|---|---|
 | №1 | Spring Core без Boot | 17.2 | 12 / 12 | ~85% |
-| №2 | Spring Boot + смежные | 8.8 (в процессе, до 04.09.2026) | 6 / 15 | 84% (средний по шагам) |
-| **Итого** | | **26.0** | **18 / 27** | |
+| №2 | Spring Boot + смежные | 12.0 (в процессе, до 04.09.2026) | 6 / 15 | 85% (средний по шагам) |
+| **Итого** | | **29.2** | **18 / 27** | |
 
 > Источник правды — `OVERALL_STATS.md`. Здесь — копия для самодостаточности `COURSE_HANDBOOK.md`. При конфликте — сверяться с `OVERALL_STATS.md`.
 
@@ -641,7 +641,7 @@ target/
 - [ ] Несколько конструкторов в бине (`@Autowired`, `@ConstructorBinding`)
 - [ ] Lazy initialization (`@Lazy`)
 - [ ] `ApplicationContext` internals (BeanFactoryPostProcessor, Environment)
-- [x] **Транзакции (курс №2, шаг 6)** — rollback-механизм крепко (90%), propagation и `@TransactionalEventListener` — 65%. **Подтянуть**: outbox-паттерн, `REQUIRED` vs `REQUIRES_NEW`
+- [x] **Транзакции (курс №2, шаг 6 micro-1 + micro-2)** — rollback (90%) и REQUIRES_NEW + self-injection (95%) крепко. `@TransactionalEventListener` (65%) и outbox-паттерн (30%) — подтянуть на шаге 8
 - [ ] JPA N+1 — закрыть на шаге 8 (JPQL/Specification)
 - [ ] Spring Security internals — закрыть на шагах 9–11
 
