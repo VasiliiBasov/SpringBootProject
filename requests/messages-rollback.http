@@ -1,0 +1,7 @@
+POST http://localhost:8081/messages
+Content-Type: application/json
+
+{"recipient":"alice@example.com","text":"should rollback"}
+
+###
+GET http://localhost:8081/messages

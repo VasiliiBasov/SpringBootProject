@@ -1,9 +1,7 @@
 package com.vasilii.notificationhub;
 
-import com.vasilii.notificationhub.service.GreetingService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ConfigurableApplicationContext;
 
 @SpringBootApplication
 public class NotificationHubApplication {

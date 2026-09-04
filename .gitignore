@@ -6,6 +6,14 @@ target/
 .env
 .kotlin
 
+# Локальные бэкапы и временные файлы (не для git)
+.git.backup_*/
+.tmp_boot.err
+.tmp_boot.out
+*.tmp
+run.err
+run.log
+
 ### STS ###
 .apt_generated
 .classpath

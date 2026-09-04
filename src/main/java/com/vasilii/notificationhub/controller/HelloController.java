@@ -4,6 +4,7 @@ package com.vasilii.notificationhub.controller;
 import com.vasilii.notificationhub.dto.MessageRequest;
 import com.vasilii.notificationhub.entity.MessageLog;
 import com.vasilii.notificationhub.repository.MessageLogRepository;
+import com.vasilii.notificationhub.service.NotificationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,16 +15,18 @@ import java.util.List;
 public class HelloController {
 
     private final MessageLogRepository repository;
+    private final NotificationService notificationService;
 
-    public HelloController(MessageLogRepository repository) {
+    public HelloController(MessageLogRepository repository, NotificationService notificationService) {
         this.repository = repository;
+        this.notificationService = notificationService;
     }
 
     @PostMapping("/messages")
     public ResponseEntity<MessageLog> createMessage(
             @Valid @RequestBody MessageRequest req) {
 
-        MessageLog saved = repository.save(new MessageLog(req.getRecipient(), req.getText()));
+        MessageLog saved = notificationService.send(req.getRecipient(), req.getText());
 
 
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
