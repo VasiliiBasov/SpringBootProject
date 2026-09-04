@@ -520,3 +520,66 @@ H2 web console в этом проекте **отключена полность�
 32. **В реальном проекте H2 console обычно не нужна** — для dev хватает `spring.jpa.show-sql=true` + REST API
 
 ---
+
+## Шаг 6, micro-1: @Transactional граница (04.09.2026, ~0.3 ч)
+
+### Что сделали
+
+- **Архитектура Controller → Service → Repository** починена: `HelloController` теперь дёргает `notificationService.send(...)`, а не `repository.save(...)` напрямую. До этого контроллер лез в репозиторий в обход — нарушение слоистой архитектуры.
+- **`EmailSender` интерфейс + 2 реализации по `@Profile`**:
+  - `dev` → `ConsoleEmailSender` (печатает в stdout)
+  - `dev-fail` → `FailingEmailSender` (кидает `RuntimeException` — для проверки ROLLBACK)
+- **`@Transactional` на `NotificationService.send(...)`** — метод делает `repository.save(...)` + `emailSender.send(...)` в одной транзакции. Если `emailSender` падает — ROLLBACK.
+- **HTTP-файл `requests/messages-rollback.http`** для удобного теста (POST + GET в одном файле).
+- **Старые сервисы удалены**: `GreetingService`, `MessageService`, `DevMessageService`, `ProdMessageService` (переход к `@Profile`-стратегии по интерфейсу `EmailSender`).
+- **`pom.xml`:** +`spring-boot-starter-actuator` (заготовка к шагу 13).
+- **`.gitignore`:** +`.git.backup_*/`, `.tmp_boot.*`, `run.err/log` (после инцидента с рекурсивным `git add .` — бэкап `.git/` попал в индекс, ~600 файлов, откатил через `git rm -r --cached`).
+- **Коммит:** `b5e9342`, запушен в `origin/main`.
+
+### Мини-экзамен (2 вопроса, средний 🟢 78%)
+
+**Вопрос 1:** При `RuntimeException` из `emailSender.send(...)` внутри `@Transactional`-метода — окажется ли строка в таблице `messages`?
+
+**Ответ ученика:** «не окажется, т.к. сработает rollback».
+
+**Оценка:** 🟢 **90%**. Суть верная, но не хватило деталей:
+- Механизм: AOP-прокси (связь с курсом №1, BPP.after) → `PlatformTransactionManager` → `getTransaction()` → биндит `EntityManager` к потоку → `repository.save()` пишет SQL, но **не коммитит** → исключение → прокси ловит RuntimeException → `rollback()` → `ROLLBACK` в БД.
+- **Выучить формулировку:** «`@Transactional` создаёт AOP-прокси, который открывает JDBC-транзакцию через `PlatformTransactionManager`. RuntimeException по умолчанию → ROLLBACK, checked (не отмеченные) — нет (если не настроен `rollbackFor`).»
+
+**Вопрос 2:** `@TransactionalEventListener(AFTER_COMMIT)` — где публикуется и что будет если listener упадёт после коммита?
+
+**Ответ ученика:** «должен жить в сендере (типа `ConsoleEmailSender`). Транзакция не откатится, но что в логах — не знаю».
+
+**Оценка:** 🟡 **65%**. Две неточности:
+- ❌ Где: событие должно публиковаться из **сервиса** (`NotificationService`), а не из сендера. Сендер — про внешний I/O (можно подменить в тестах на mock).
+- ✅ Что не откатится — верно (listener крутится ПОСЛЕ коммита основной TX).
+- ⚠️ Логи — `ERROR` со стектрейсом, **Spring сам не ретраит**.
+- ⚠️ Поведение для пользователя: HTTP 201 уже ушёл до падения listener'а, клиент думает «отправлено».
+- ❌ На проде для надёжности — **outbox-паттерн** (отдельная таблица `outbox_events` + polling).
+
+**Выучить формулировку:** «Событие публикуется из `@Transactional`-метода сервиса через `ApplicationEventPublisher`. Listener с `@TransactionalEventListener(AFTER_COMMIT)` вызывается после коммита. Если listener падает — основная запись сохранена, 201 ушёл, в логах ERROR, **тихая потеря данных**. Решение: outbox-паттерн.»
+
+### Шпаргалка (новое)
+
+29. **`@Transactional` — это AOP-прокси** с `TransactionInterceptor`. Сам метод — обычный Java, «магия» в прокси (как `BPP.after` из курса №1)
+30. **`PlatformTransactionManager`** — то, что реально открывает/коммитит/откатывает JDBC-транзакцию. `@Transactional` сам ничего не делает
+31. **RuntimeException по умолчанию → ROLLBACK**, checked (не отмеченные `@ExceptionHandler`) — нет. Настраивается через `@Transactional(rollbackFor = ...)`
+32. **`AFTER_COMMIT`** listener крутится **после** успешного коммита основной TX. Если listener падает — откатывать нечего, но данные в БД могут быть неконсистентны
+33. **События публикуются из сервиса** (`@Transactional`-метод), не из сендера/репозитория. Иначе listener может не сработать (нет транзакции)
+34. **Outbox-паттерн** — для надёжной доставки событий после коммита. Отдельная таблица `outbox_events` + фоновый polling/CDC. Без него — тихая потеря
+35. **`git add .` подхватывает всё**, включая `.git.backup_*/`. Если это копия `.git/` — рекурсивно затащит всю историю в новый коммит. **Всегда** проверять `git status --short` перед `commit`
+36. **`git rm -r --cached`** — убирает из индекса, не удаляя файлы с диска. Безопасный способ отката рекурсивного `add`
+37. **`index.lock`** — git создаёт при операциях с индексом. Если упал — можно безопасно удалить вручную
+
+### Шпаргалка для собеса (обновляется)
+
+1-28. [прежние пункты без изменений]
+
+29. **`@Transactional` = AOP-прокси с `TransactionInterceptor`** (связь с курсом №1, BPP.after)
+30. **`PlatformTransactionManager`** — реально управляет JDBC-TX. `@Transactional` — только аннотация-маркер
+31. **RuntimeException → ROLLBACK по умолчанию**, checked — нет. Настраивается через `rollbackFor`/`noRollbackFor`
+32. **`@TransactionalEventListener(phase=AFTER_COMMIT)`** — крутится после коммита основной TX. Падение listener'а → основная запись в БД есть, но логика после коммита потеряна
+33. **Outbox-паттерн** — `outbox_events` + polling/CDC. Решает проблему «тихой потери» при падении listener'а
+34. **`.gitignore` должен включать все локальные артефакты** (бэкапы, tmp-файлы, логи). `git add .` не проверяет — он подхватывает всё не-игнорируемое
+
+---

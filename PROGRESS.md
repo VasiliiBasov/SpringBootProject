@@ -5,16 +5,39 @@
 **Цифры, время, баллы — в `STATS.md`.**
 **Конспект теории — в `LEARNING_LOG.md`.**
 **Краткое резюме (если история слетит) — в `HANDOFF.md`.**
+**Сводка по всем проектам — в `OVERALL_STATS.md`.**
+**Программа курса + история — в `COURSE_HANDBOOK.md`.**
 
 ---
 
 ## 📌 Где мы сейчас
 
-**Текущий шаг:** 5 / 15 ✅ — Spring Data JPA: H2 in-memory + JpaRepository (micro-1) + фикс /h2-console loop (micro-2) ✅
-**Следующий шаг:** шаг 6 — Транзакции: `@Transactional` (связь с AOP из курса №1). Начали 02.09.2026: разобрали декларативную модель (proxy → BEGIN/COMMIT/ROLLBACK), обсудили, что для транзакций нужен реальный use-case с несколькими DB-операциями. На завтра: выбрать сценарий (реальный «сохранить + email» или учебный «2 записи в БД»), починить архитектуру (Controller → Service → Repository, сейчас контроллер лезет в репозиторий в обход), повесить `@Transactional` на сервис, проверить ROLLBACK на исключении.
-**Процент:** 33% (5/15) — шаги 1, 2, 3, 4, 5 закрыты
+**Текущий шаг:** 6 / 15 — Транзакции: `@Transactional` (micro-1 ✅, мини-экзамен ✅, средний 78%). Коммит `b5e9342` запушен.
+**Следующий шаг:** шаг 6 (продолжение) или шаг 7 — Flyway/Liquibase. Решение за учеником.
+**Процент:** 40% (6/15) — шаги 1, 2, 3, 4, 5, 6 (micro-1) закрыты
 
-**Активная зависшая задача:** фикс `/h2-console` петли — **закрыт** (см. `LEARNING_LOG.md`, раздел «Шаг 5, микро-шаг 2 — ФИНАЛ»). Итог: `WebConfig.java` удалён целиком, но петля оказалась в Spring Boot 4.0.8 (нет автоконфига H2 web console + DispatcherServlet forward-петля на любой URL без mapping'а). H2 console в проекте отключена полностью, отладка через `GET /messages` + логи Hibernate. `H2ConsoleRedirectTest` отменён — на шаге 12 (Testing) разберём `ServletRegistrationBean<WebServlet>` и напишем нормальный тест.
+**Что сделано в шаге 6 (micro-1):**
+- ✅ Архитектура Controller → Service → Repository починена (`HelloController` дёргает `notificationService.send(...)`, а не `repository.save` напрямую)
+- ✅ `EmailSender` интерфейс + 2 реализации по `@Profile`:
+  - `dev` → `ConsoleEmailSender` (печатает в stdout)
+  - `dev-fail` → `FailingEmailSender` (кидает `RuntimeException` — для проверки ROLLBACK)
+- ✅ `@Transactional` на `NotificationService.send(...)` — обёртка `save + emailSender.send` в одну TX
+- ✅ HTTP-файл `requests/messages-rollback.http` для удобного теста
+- ✅ Старые сервисы удалены: `GreetingService`, `MessageService`, `Dev/ProdMessageService`
+- ✅ `pom.xml`: +`spring-boot-starter-actuator` (заготовка к шагу 13)
+- ✅ `.gitignore`: +`.git.backup_*/`, `.tmp_boot.*`, `run.err/log` (после инцидента с рекурсивным `git add .`)
+
+**Мини-экзамен шага 6 (04.09.2026):**
+- Q1 (rollback при исключении из `@Transactional`-метода): 🟢 90%
+- Q2 (propagation + `@TransactionalEventListener(AFTER_COMMIT)`): 🟡 65%
+- **Средний:** 🟢 **78%**
+
+**Пробелы для подтяжки на шаге 6/8:**
+- Где публикуются события (сервис, не сендер)
+- Outbox-паттерн для надёжной доставки событий после коммита
+- Propagation (`REQUIRED` vs `REQUIRES_NEW`)
+
+**Зависших задач нет.**
 
 ## 🔑 Шпаргалка для следующего открытия (ПРОЧИТАТЬ ПЕРВЫМ ДЕЛОМ)
 

@@ -24,28 +24,39 @@
 
 ## 📊 Текущий статус
 
-- **Шаг:** 5 / 15 ✅ (JPA + H2 in-memory + фикс /h2-console loop + диагностика contribution graph)
+- **Шаг:** 6 / 15 (Транзакции: `@Transactional`, micro-1 ✅ + мини-экзамен ✅, средний 78%)
 - **Дата старта курса №2:** 28.08.2026 17:10
-- **Дата последнего обновления:** 02.09.2026
-- **Средний балл по курсу №2:** **~82%** (7 тем: 60+90+60+90+95+85+85 = 565/7 = 80.7%, без штрафа за шаг 5 — там был разбор продвинутой проблемы, не мини-экзамен)
+- **Дата последнего обновления:** 04.09.2026
+- **Средний балл по мини-экзаменам (9 тем):** **65%** (исторически было 77% до шага 6 — упал, потому что темы по транзакциям слабые, это сигнал «что подтягивать»)
+- **Средний балл по шагам (4 закрытых шага):** **84%** (80% + 93% + 85% + 78% = 336/4)
 - **Средний балл по шагу 2:** 80%
 - **Средний балл по шагу 3:** ~93% (лучший в курсе №2)
 - **Средний балл по шагу 4:** ~85%
-- **Всего потрачено:** 7.9 ч
+- **Средний балл по шагу 6:** 78%
+- **Всего потрачено:** **8.8 ч** (8.5 ч до + 0.3 ч за 04.09)
+
+**Что сделано в шаге 6 (micro-1, 04.09.2026):**
+- ✅ Архитектура Controller → Service → Repository починена (`HelloController` дёргает `notificationService.send(...)`, не `repository.save` напрямую)
+- ✅ `EmailSender` интерфейс + 2 реализации по `@Profile`:
+  - `dev` → `ConsoleEmailSender` (печатает в stdout)
+  - `dev-fail` → `FailingEmailSender` (кидает `RuntimeException` — для проверки ROLLBACK)
+- ✅ `@Transactional` на `NotificationService.send(...)` — обёртка `save + emailSender.send` в одну TX
+- ✅ HTTP-файл `requests/messages-rollback.http` для удобного теста
+- ✅ Мини-экзамен (2 вопроса): rollback + propagation → 90% + 65% = 78%
+- ✅ Коммит `b5e9342` запушен в `origin/main`
+- ✅ Старые сервисы удалены: `GreetingService`, `MessageService`, `Dev/ProdMessageService`
+- ✅ `pom.xml`: +`spring-boot-starter-actuator` (заготовка к шагу 13)
+- ✅ `.gitignore`: +`.git.backup_*/`, `.tmp_boot.*`, `run.err/log` (после инцидента с рекурсивным `git add .` 04.09)
 
 **Что сделано в шаге 5 (целиком):**
 - 2 микро-шага ✅
   - **micro-1**: JPA + H2 in-memory DB. Зависимости `spring-boot-starter-data-jpa` + `h2` в `pom.xml`. `entity/MessageLog.java` (JPA-entity), `repository/MessageLogRepository.java` (extends `JpaRepository<MessageLog, Long>`), `service/MessageService.java` (save/findAll), контроллер дёргает сервис. `spring.jpa.hibernate.ddl-auto=create-drop` для dev-режима.
-  - **micro-2**: фикс петли `/h2-console`. В `WebConfig.java` было `addViewController("/h2-console", "forward:/h2-console")` — создавало бесконечный forward (Circular view path). Решение: **вариант А** (минимальный) — `redirect:/h2-console/` одной строкой. Тесты: `H2ConsoleRedirectTest` (планировался, @WebMvcTest + @SpringBootTest).
-- Диагностика contribution graph: коммиты не показывались, потому что `git config user.email = vasilii@local` не совпадал с email GitHub. Решено через `git filter-repo` (rewrite истории всех коммитов: `vasilii@local → vasekbasovv@mail.ru`), force-push в `origin/main`. Новый HEAD = `339f3d0`. Бэкап: `.git.backup_20260902_024500/` (на диске, **не трогать минимум неделю**).
+  - **micro-2**: фикс петли `/h2-console`. В `WebConfig.java` было `addViewController("/h2-console", "forward:/h2-console")` — создавало бесконечный forward (Circular view path). Решение: **вариант Б** (рекомендация) — удалить `WebConfig.java` целиком.
+- Диагностика contribution graph: коммиты не показывались, потому что `git config user.email = vasilii@local` не совпадал с email GitHub. Решено через `git filter-repo` (rewrite истории всех коммитов: `vasilii@local → vasekbasovv@mail.ru`), force-push в `origin/main`. Новый HEAD = `339f3d0`. Бэкап: `.git.backup_20260902_024500/` (на диске, **не трогать минимум до 09.09.2026**). С 04.09 добавлен в `.gitignore`.
 
-**Известная мелочь:** `application-dev.yml` содержит опечатку — `notificationhun` вместо `notificationhub` в `logging.level`. Не критично (логирование и так работает), но при случае поправить.
-
-**Известная мелочь:** `HelloController.java` сейчас содержит только `POST /messages` — другие методы (`/hello`, `/search`, `/users/{id}/orders/{orderId}`) были утеряны при правках. Для шага 6+ понадобится, восстановим по мере необходимости.
+**Известная мелочь:** `HelloController.java` сейчас содержит только `POST /messages` и `GET /messages` — другие методы (`/hello`, `/search`, `/users/{id}/orders/{orderId}`) были утеряны при правках шага 3. Для собеса не нужны, по мере необходимости восстановим.
 
 **Известная проблема (Spring Boot 4.0.8):** `GET /h2-console` даёт 500 + StackOverflowError даже без `WebConfig`. Корень: Spring Boot 4 не содержит автоконфигурации H2 web console (в отличие от Boot 3.x) + DispatcherServlet forward-петля через `InternalResourceView`. Решение: H2 console отключена полностью, отладка через `GET /messages` + `spring.jpa.show-sql=true`. `H2ConsoleRedirectTest` отменён — на шаге 12 (Testing) разберём `ServletRegistrationBean<WebServlet>` и напишем нормальный тест. Подробности в `LEARNING_LOG.md`, раздел «Шаг 5, микро-шаг 2 — ФИНАЛ».
-
-**Изменено 02.09.2026:** `WebConfig.java` удалён целиком (вариант Б). Каталог `config/` теперь пустой.
 
 **Что сделано в шаге 3 микро-шаг 1:**
 - Создан `controller/HelloController.java` с `@RestController` + `@GetMapping("/hello")` → `Map.of(...)`

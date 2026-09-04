@@ -19,7 +19,7 @@
 | # | Проект | Тема | Статус | Шагов | Часов | Балл | Ссылка на дневник |
 |---|--------|------|--------|-------|-------|------|-------------------|
 | 1 | **SpringCoreProject** | Spring Core (без Boot) | ✅ Завершён | 12 / 12 | 17.2 | ~85% | `SpringCoreProject/COURSE_HANDBOOK.md` |
-| 2 | **SpringBootProject** | Spring Boot + JPA + Security | ⏳ В процессе | 4 / 15 | 5.4 (старт 28.08.2026 17:10) | 81% | `SpringBootProject/COURSE_HANDBOOK.md` |
+| 2 | **SpringBootProject** | Spring Boot + JPA + Security | ⏳ В процессе | 6 / 15 | 8.8 (старт 28.08.2026 17:10, последняя активность 04.09.2026) | 84% (средний по шагам) | `SpringBootProject/COURSE_HANDBOOK.md` |
 
 ### Не использовать как проекты в этой статистике
 
@@ -38,8 +38,8 @@
 | Проект | Даты | Часов |
 |--------|------|-------|
 | SpringCoreProject (Core) | 24.08.2026 → 28.08.2026 | 17.2 |
-| SpringBootProject (Boot) | 28.08.2026 → _TBD_ | 5.4 (старт в 17:10) |
-| **ИТОГО** | | **22.6 ч** |
+| SpringBootProject (Boot) | 28.08.2026 → _TBD_ | 8.8 (старт в 17:10, активность до 04.09.2026) |
+| **ИТОГО** | | **26.0 ч** |
 
 **Средняя скорость по Core:** ~1.4 ч/шаг (12 шагов за 17.2 ч)
 
@@ -66,17 +66,17 @@
 
 - [x] Старт Spring Boot проекта (шаг 1, 🟡 без практики)
 - [x] Автоконфигурация, профили (шаг 2, 🟢 80%)
-- [ ] REST API: `@RestController` (шаг 3, 🟡 в работе)
-- [ ] DTO + валидация
-- [ ] Spring Data JPA: `@Entity`, `JpaRepository`
-- [ ] `@Transactional`
+- [x] REST API: `@RestController`, `@GetMapping` (шаг 3, 🟢 93%)
+- [x] DTO + валидация, `@RestControllerAdvice` (шаг 4, 🟢 85%)
+- [x] Spring Data JPA: `@Entity`, `JpaRepository` (шаг 5, ✅ разбор продвинутой проблемы)
+- [x] `@Transactional` (шаг 6 micro-1, 🟢 78%) — основной rollback-механизм крепко (90%), propagation / `AFTER_COMMIT` / outbox — подтянуть
 - [ ] Миграции (Flyway/Liquibase)
 - [ ] JPQL, native, Specification
 - [ ] Spring Security basics
 - [ ] JWT
 - [ ] Method Security (`@PreAuthorize`)
 - [ ] Testing (`@SpringBootTest`, `MockMvc`, Testcontainers)
-- [ ] Логирование, мониторинг, Actuator
+- [ ] Логирование, мониторинг, Actuator (actuator уже подключен в pom)
 - [ ] Кэширование (`@Cacheable`)
 - [ ] Финал / ревью
 
@@ -99,10 +99,11 @@
 | Несколько конструкторов в бине | Core, шаг 1 | 🔴 30% | Разобрать в Boot-курсе на примере `@Service` с двумя конструкторами |
 | Lazy initialization (`@Lazy`) | Core, не разбирали | 🔴 10% | Ввести в Boot-курсе как способ ускорить старт |
 | `ApplicationContext` internals | Core, не разбирали | 🔴 10% | Разобрать в Boot-курсе (BeanFactoryPostProcessor, Environment) |
-| Транзакции | Core, не разбирали | — | Boot-курс, шаг 6 (полностью новая тема) |
+| Транзакции | Boot, шаг 6 | 🟡 65–90% | Основной rollback крепко (90%). Propagation и `@TransactionalEventListener(AFTER_COMMIT)` — подтянуть на шаге 6/8 |
 | Spring Security | Core, не разбирали | — | Boot-курс, шаги 9–11 (полностью новая тема) |
-| Spring Data JPA | Core, не разбирали | — | Boot-курс, шаги 5–8 (полностью новая тема) |
+| Spring Data JPA | Boot, шаг 5 | ✅ ~85% | `JpaRepository`, entity, findBy — крепко. JPQL/спецификации — на шаге 8 |
 | Тестирование | Core, не разбирали | — | Boot-курс, шаг 12 (полностью новая тема) |
+| Outbox-паттерн | Boot, шаг 6 | 🔴 30% | Упомянут в шаге 6 Q2, не разобран. Подтянуть отдельно (шаг 8 или 13) |
 
 ---
 
@@ -134,16 +135,16 @@
 По окончании обоих курсов ученик должен уметь:
 
 - [x] Объяснить IoC, DI, Bean Lifecycle своими словами (курс №1, 85%)
-- [ ] Написать REST API на Spring Boot с валидацией (курс №2, шаг 3 в работе)
-- [ ] Подключить БД через Spring Data JPA, написать `@Transactional` сервис (курс №2)
+- [x] Написать REST API на Spring Boot с валидацией (курс №2, шаги 3–4 ✅, ~89%)
+- [x] Подключить БД через Spring Data JPA, написать `@Transactional` сервис (курс №2, шаги 5–6 ✅, ~78%)
 - [ ] Защитить endpoints через Spring Security + JWT (курс №2)
 - [ ] Написать интеграционный тест с `@SpringBootTest` (курс №2)
 - [ ] Ответить на 30+ вопросов собеседования без запинки (финальная шпаргалка)
 
-**Прогресс:** 1 / 6 (17%) — по контрольным точкам чеклиста
+**Прогресс:** 3 / 6 (50%) — по контрольным точкам чеклиста
 
-**Прогресс по шагам:** 2 / 15 (13%) — старт Spring Boot + автоконфигурация (см. `STATS.md`)
+**Прогресс по шагам:** 6 / 15 (40%) — старт Boot + автоконфигурация + REST + DTO + JPA + @Transactional (см. `STATS.md`)
 
 ---
 
-*Файл скопирован из `SpringCoreProject` 28.08.2026 17:10 при старте курса №2. Обновляется при старте новых обучающих проектов.*
+*Файл скопирован из `SpringCoreProject` 28.08.2026 17:10 при старте курса №2. Последнее обновление: 04.09.2026 (после шага 6 micro-1).*
