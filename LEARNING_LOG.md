@@ -631,3 +631,77 @@ H2 web console в этом проекте **отключена полность�
 44. **Порядок вызовов важен**: REQUIRES_NEW-метод ПОСЛЕ возможного исключения никогда не запустится на сценарии падения. Для надёжного аудита — до операции, или listener, или outbox-таблица
 
 ---
+---
+
+## Шаг 7: Flyway/Liquibase (старт 05.09.2026, ~3.0 ч в сессии №13)
+
+### Микро-шаг 1: первая попытка — что пошло не так
+
+- Ученик добавил `AuditLog` entity + `AuditLogRepository` + переписал `auditSend` на сохранение в `audit_log` — самостоятельно, до моих подсказок
+- `pom.xml`: +`flyway-core` (Boot BOM → 11.14.1)
+- Создал `V1_init_messages.sql` + `V2_init_messages.sql` (названия оба про messages — копипаста)
+
+**Две ошибки найдены при первом запуске:**
+
+1. **Формат имени файлов Flyway.** Должно быть `V<номер>__<описание>.sql` — **два** подчёркивания. У ученика одно. Flyway такие файлы **игнорирует молча** (с предупреждением `validateMigrationNaming`). Решение: `git mv V1_init_messages.sql V1__init_messages.sql` + переименование V2 в `V2__init_audit_log.sql` (второй файл — про audit, а не messages).
+
+2. **Spring Boot 4 требует `spring-boot-starter-flyway`.** Только `flyway-core` недостаточно — нет автоконфигурации. Добавил starter → Flyway заработал, лог показывает:
+   ```
+   Migrating schema "PUBLIC" to version "1 - init messages"
+   Migrating schema "PUBLIC" to version "2 - init audit log"
+   Successfully applied 2 migrations to schema "PUBLIC", now at version v2
+   ```
+
+### Микро-шаг 2: дьявол в application.properties
+
+После исправления выше Flyway отработал, но Hibernate всё равно сделал `drop table + create table` **после** миграций. Причина:
+
+- В `application.properties` стоит `spring.jpa.hibernate.ddl-auto=create-drop`
+- В `application-dev.yml` ученик добавил `ddl-auto:none`
+- В Spring Boot `application.properties` загружается как **отдельный PropertySource** с высоким приоритетом → `none` из dev-yml не перебивает `create-drop` из properties
+
+**Урок для собеса:** при конфликте `.properties` vs `.yml` — `.properties` обычно выигрывает по приоритету. Решение в нашем случае — поменять `ddl-auto` **глобально** в `application.properties` (или конвертировать всё в один формат).
+
+### Микро-шаг 3: от in-memory к production-like dev-стенду
+
+`jdbc:h2:mem:notificationhub` — это **in-memory** база. Живёт только в JVM-процессе, при рестарте — пустая Flyway заново создаёт схему, данные потеряны. На реальной работе так не делают.
+
+**Три подхода для persistent H2 в dev:**
+
+| # | URL | Persistent | IDEA одновременно | Production-like |
+|---|---|---|---|---|
+| 1 | `jdbc:h2:file:./data/notificationhub;AUTO_SERVER=TRUE` | ✅ | ❌ блокировка | Частично |
+| 2 | `jdbc:h2:tcp://localhost:9092/mem:notificationhub` | ❌ | ✅ | Нет |
+| 3 | `jdbc:h2:tcp://localhost:9092/file:./data/notificationhub` | ✅ | ✅ | ✅ |
+
+**Ученик выбрал #3** — TCP-сервер + файл. Это даёт:
+- Данные переживают рестарт (`file:`)
+- IDEA подключается параллельно через тот же TCP (`tcp://`)
+- На проде тот же паттерн: реальная БД (PostgreSQL/MySQL) крутится как отдельный процесс, приложение подключается по TCP
+
+**Что нужно сделать дальше (план ученика):**
+1. Зарегистрировать H2 TCP-сервер через `@Bean` в конфигурации (порт 9092)
+2. Поменять `spring.datasource.url` на `jdbc:h2:tcp://localhost:9092/file:./data/notificationhub`
+3. Поменять `ddl-auto` с `create-drop` на `validate` — Hibernate будет **проверять** соответствие entity ↔ схеме, но не менять её. Source of truth = Flyway
+4. Сверить entity ↔ миграции (особенно `event_type` nullable в entity, длина `message VARCHAR(10017)`)
+5. `.gitignore` для `./data/`
+6. Подключение из IDEA Database: драйвер H2, URL `jdbc:h2:tcp://localhost:9092/file:./data/notificationhub`, user `sa`, пароль пустой
+7. Проверка: рестарт → `flyway_schema_history` на месте → данные на месте → Hibernate НЕ делает drop+create
+
+### Teachable moment для собеса
+
+**Почему `ddl-auto=validate` лучше чем `none` для dev:**
+
+| Режим | Hibernate делает | Когда использовать |
+|---|---|---|
+| `create-drop` | Создаёт при старте, дропает при остановке | Только ad-hoc тесты, не для серьёзного dev |
+| `create` | Создаёт при старте | Не использовать — перезатирает данные |
+| `update` | Сравнивает и добавляет новые колонки | Опасно — может сделать непредсказуемые миграции |
+| `validate` | Только проверяет что entity ↔ DB совпадают, **не меняет ничего** | **Лучший выбор для dev с миграциями** |
+| `none` | Ничего не делает, даже не валидирует | Когда уверен что entity 100% матчит БД, или БД чужая (legacy) |
+
+`validate` **ловит рассинхрон** между entity и схемой на старте (упадёт с ошибкой если добавил `@Column` в entity, но забыл миграцию). Это **защита** от багов в dev.
+
+### Зафиксированное правило: фиксация времени
+
+(см. `PROGRESS.md`, сессия №14) При команде «пауза» / «закончили» / «продолжим» — **обязательно** обновить 4 файла: `STATS.md`, `PROGRESS.md`, `OVERALL_STATS.md`, `HANDOFF.md`. Без напоминания от ученика.

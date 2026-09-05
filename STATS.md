@@ -47,8 +47,9 @@
 | 10 | 02.09.2026 | Шаг 5 (финал): удалили WebConfig.java целиком, но петля /h2-console осталась — корень в Spring Boot 4.0.8 (нет автоконфига H2 web console, DispatcherServlet forward-петля). H2 console отключена полностью, отладка через GET /messages + show-sql. H2ConsoleRedirectTest отменён (тест не имеет смысла). Начали шаг 6 (теория + план), остановились на выборе use-case | 0.6 |
 | 11 | 04.09.2026 | Шаг 6 micro-1: @Transactional граница (Controller → Service → Repository; EmailSender interface + ConsoleEmailSender @Profile("dev") + FailingEmailSender @Profile("dev-fail"); rollback-сценарий в requests/messages-rollback.http; +spring-boot-starter-actuator; чистка .gitignore). Мини-экзамен 2 вопроса (rollback + propagation) → 90% + 65% = 78% | 0.3 |
 | 12 | 04.09.2026 | Шаг 6 micro-2: Propagation REQUIRES_NEW. Self-injection через @Lazy в NotificationService (поле `self`, конструктор с 3-м параметром), добавлен метод `auditSend` с `@Transactional(propagation = REQUIRES_NEW)`. Ученик сам догадался поставить `self.auditSend` ДО `emailSender.send` — иначе audit не успевал закоммититься на dev-fail. Мини-экзамен (REQUIRES_NEW + падение внешней TX) → 95% | 3.2 |
+| 13 | 05.09.2026 | Шаг 7 (старт): Flyway. Ученик сам написал AuditLog + AuditLogRepository + auditSend на AuditLog (вместо костыля [audit] в messages). pom.xml: +flyway-core. Создал V1/V2 миграции, но **с одним подчёркиванием** в имени (V1_init_messages.sql) — Flyway их НЕ ВИДИТ. Диагностика: Spring Boot 4 требует spring-boot-starter-flyway (добавил). После этого Flyway применил 2 миграции (Migrating v1 → v2 → Successfully applied). **Но** Hibernate всё равно делает drop+create — потому что в application.properties стоит `ddl-auto=create-drop`, а в application-dev.yml `ddl-auto:none` не перебивает. Решили переходить на production-like dev-стенд. Переименованы файлы миграций (V1__init_messages.sql, V2__init_audit_log.sql) | 3.0 |
 
-**Итого:** 12.0 ч (старт курса №2 — 28.08.2026 17:10, последняя активность 04.09.2026)
+**Итого:** 15.0 ч (старт курса №2 — 28.08.2026 17:10, последняя активность 05.09.2026)
 
 ---
 

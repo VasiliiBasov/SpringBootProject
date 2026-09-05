@@ -1,6 +1,8 @@
 package com.vasilii.notificationhub.service;
 
+import com.vasilii.notificationhub.entity.AuditLog;
 import com.vasilii.notificationhub.entity.MessageLog;
+import com.vasilii.notificationhub.repository.AuditLogRepository;
 import com.vasilii.notificationhub.repository.MessageLogRepository;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -11,14 +13,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationService {
 
     private final MessageLogRepository repository;
+    private final AuditLogRepository auditLogRepository;
     private final EmailSender emailSender;
     private final NotificationService self;
 
-    public NotificationService(MessageLogRepository repository, EmailSender emailSender,
+    public NotificationService(MessageLogRepository repository,
+                               AuditLogRepository auditLogRepository,
+                               EmailSender emailSender,
                                @Lazy NotificationService self) {
         this.repository = repository;
         this.emailSender = emailSender;
         this.self = self;
+        this.auditLogRepository = auditLogRepository;
     }
 
     @Transactional
@@ -30,9 +36,9 @@ public class NotificationService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public MessageLog auditSend(String recipient, String text) {
+    public AuditLog auditSend(String eventType, String text) {
         String text2 = "Письмо из audit: " + text;
-        MessageLog saved =  repository.save(new MessageLog(recipient, text2));
+        AuditLog saved =  auditLogRepository.save(new AuditLog(eventType, text2));
         return saved;
     }
 }

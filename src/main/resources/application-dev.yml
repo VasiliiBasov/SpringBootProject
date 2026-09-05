@@ -3,6 +3,10 @@ app:
 logging:
   level:
     com.vasilii.notificationhub: DEBUG
+spring:
+  jpa:
+    hibernate:
+      show-sql:true
 
 # H2 Console: в Spring Boot 4 (4.0.8) web console не работает из коробки —
 # при enabled=true даёт 500 + StackOverflowError, при enabled=false — 404.
