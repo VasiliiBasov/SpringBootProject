@@ -19,7 +19,7 @@
 | # | Проект | Тема | Статус | Шагов | Часов | Балл | Ссылка на дневник |
 |---|--------|------|--------|-------|-------|------|-------------------|
 | 1 | **SpringCoreProject** | Spring Core (без Boot) | ✅ Завершён | 12 / 12 | 17.2 | ~85% | `SpringCoreProject/COURSE_HANDBOOK.md` |
-| 2 | **SpringBootProject** | Spring Boot + JPA + Security | ⏳ В процессе | 6 / 15 (+старт шага 7) | 15.0 (старт 28.08.2026 17:10, последняя активность 05.09.2026) | 85% (средний по шагам) | `SpringBootProject/COURSE_HANDBOOK.md` |
+| 2 | **SpringBootProject** | Spring Boot + JPA + Security | ⏳ В процессе | 7 / 15 (шаг 7 закрыт) | 17.5 (старт 28.08.2026 17:10, последняя активность 05.09.2026 15:32) | ~81% (средний по шагам) | `SpringBootProject/COURSE_HANDBOOK.md` |
 
 ### Не использовать как проекты в этой статистике
 
@@ -38,8 +38,8 @@
 | Проект | Даты | Часов |
 |--------|------|-------|
 | SpringCoreProject (Core) | 24.08.2026 → 28.08.2026 | 17.2 |
-| SpringBootProject (Boot) | 28.08.2026 → _TBD_ | 15.0 (старт в 17:10, активность до 05.09.2026) |
-| **ИТОГО** | | **32.2 ч** |
+| SpringBootProject (Boot) | 28.08.2026 → _TBD_ | 17.5 (старт в 17:10, активность до 05.09.2026 15:32) |
+| **ИТОГО** | | **34.7 ч** |
 
 **Средняя скорость по Core:** ~1.4 ч/шаг (12 шагов за 17.2 ч)
 
@@ -70,7 +70,7 @@
 - [x] DTO + валидация, `@RestControllerAdvice` (шаг 4, 🟢 85%)
 - [x] Spring Data JPA: `@Entity`, `JpaRepository` (шаг 5, ✅ разбор продвинутой проблемы)
 - [x] `@Transactional` (шаг 6 micro-1 + micro-2, 🟢 ~83%) — rollback-механизм (90%), REQUIRES_NEW + self-injection (95%). Подтянуть: outbox-паттерн, остальные режимы propagation (NESTED/MANDATORY/etc.)
-- [ ] Миграции (Flyway/Liquibase)
+- [x] Миграции: Flyway (шаг 7, 🟡 ~70%) — production-like dev (TCP + файл + validate). Flyway naming + validate (🟢 80%), V vs R миграции (🟡 40% — подтянуть на собесе)
 - [ ] JPQL, native, Specification
 - [ ] Spring Security basics
 - [ ] JWT

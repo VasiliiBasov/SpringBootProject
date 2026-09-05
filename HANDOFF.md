@@ -24,25 +24,35 @@
 
 ## 📊 Текущий статус
 
-- **Шаг:** 7 / 15 (Flyway/Liquibase, **старт 05.09.2026**, выбран production-like подход #3 — TCP + файл)
+- **Шаг:** 7 / 15 ✅ (Flyway/Liquibase, **закрыт 05.09.2026**, коммит `7634659`)
 - **Дата старта курса №2:** 28.08.2026 17:10
-- **Дата последнего обновления:** 05.09.2026 (старт шага 7)
-- **Средний балл по мини-экзаменам (10 тем):** **68%** (90+65+95 по шагу 6 добавились)
-- **Средний балл по шагам (5 закрытых шагов):** **~84%** (80 + 93 + 85 + 78 + 83 = 419/5)
+- **Дата последнего обновления:** 05.09.2026 15:32 (финал шага 7)
+- **Средний балл по мини-экзаменам (12 тем):** **66%** (90+60+90+95+70+90+65+95+80+40 по шагам 1, 2, 6, 7 добавились)
+- **Средний балл по шагам (6 закрытых шагов):** **~81%** (80 + 93 + 85 + 78 + 83 + ~70 = 489/6)
 - **Средний балл по шагу 2:** 80%
 - **Средний балл по шагу 3:** ~93% (лучший в курсе №2)
 - **Средний балл по шагу 4:** ~85%
 - **Средний балл по шагу 6:** **~83%** (micro-1: 78%, micro-2: REQUIRES_NEW 95%)
-- **Всего потрачено:** **15.0 ч** (12.0 до + 3.0 за 05.09 сессию №13)
+- **Средний балл по шагу 7:** **~70%** (V vs R — слабо, подтянуть на собесе)
+- **Всего потрачено:** **17.5 ч** (12.0 до + 5.5 за 05.09 сессии №13–14)
+
+**Что сделано в шаге 7 (финал, 05.09.2026, сессии №13–14):**
+- ✅ Реализован Подход #3 — production-like dev (TCP-сервер H2 + файловая БД + `ddl-auto=validate`)
+- ✅ `H2ServerConfig`: `@Component` + `BeanFactoryPostProcessor` — TCP-сервер стартует ДО Flyway (через @Component иначе не регистрируется, поймали `Connection refused`)
+- ✅ `application.properties`: url=`jdbc:h2:tcp://localhost:9092/file:./data/notificationhub`, `ddl-auto=validate`
+- ✅ `application-dev.yml`: убран `ddl-auto:none`
+- ✅ pom.xml: +explicit `h2` со `scope=compile` (transitive scope=runtime блокирует `org.h2.tools.Server` в IDE)
+- ✅ Верификация: Flyway `Successfully validated 2 migrations`, Hibernate 0 DDL в логе, POST→restart→5 записей на месте
+- 🧪 Мини-экзамен (2 вопроса, **3/5**): Flyway checksum mismatch (4/5) + V vs R миграции (2/5)
+- ✅ Коммит `7634659` на main
 
 **Что сделано в шаге 7 (старт, 05.09.2026, сессия №13):**
 - ✅ Ученик **сам** написал `AuditLog` + `AuditLogRepository` + переписал `auditSend` на сохранение в `audit_log`
 - ✅ `pom.xml`: +`flyway-core` (Boot BOM → 11.14.1) + `spring-boot-starter-flyway` (нужен в Boot 4)
-- ✅ Миграции `V1__init_messages.sql`, `V2__init_audit_log.sql` (после переименования)
+- ✅ Миграции `V1__init_messages.sql`, `V2__init_audit_log.sql` (после переименования, двойное `_`)
 - 🔍 Flyway применил 2 миграции (`Successfully applied 2 migrations`) — **работает**
-- ⚠️ Hibernate всё ещё делает `drop+create` после Flyway из-за `ddl-auto=create-drop` в `application.properties`
+- ⚠️ Hibernate всё ещё делал `drop+create` после Flyway из-за `ddl-auto=create-drop` в `application.properties` (`.yml` не перебивает `.properties`)
 - 🎯 Решение: переход на production-like dev (Подход #3 — H2 TCP-сервер + файловая БД)
-- ⏳ Не закоммичено — изменения висят в working tree
 
 **Что сделано в шаге 6 (micro-2, 04.09.2026):**
 - ✅ `NotificationService` дополнен self-injection через `@Lazy` (поле `self`, конструктор с 3-м параметром)

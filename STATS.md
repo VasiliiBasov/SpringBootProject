@@ -17,12 +17,12 @@
 **Процент прохождения:**
 
 ```
-|████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░| 40% (6/15)
+|████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░| 47% (7/15)
 ```
 
-**Текущий шаг:** 6 / 15 — Транзакции: `@Transactional` (micro-1 ✅ + micro-2 ✅ + мини-экзамены ✅, ~83%)
+**Текущий шаг:** 7 / 15 — Миграции: Flyway/Liquibase ✅ (Подход #3 — TCP-сервер + файл + validate, мини-экзамен 3/5)
 
-**Последнее обновление:** 04.09.2026 (финал micro-2)
+**Последнее обновление:** 05.09.2026 15:32 (финал шага 7, коммит `7634659`)
 
 ---
 
@@ -48,8 +48,9 @@
 | 11 | 04.09.2026 | Шаг 6 micro-1: @Transactional граница (Controller → Service → Repository; EmailSender interface + ConsoleEmailSender @Profile("dev") + FailingEmailSender @Profile("dev-fail"); rollback-сценарий в requests/messages-rollback.http; +spring-boot-starter-actuator; чистка .gitignore). Мини-экзамен 2 вопроса (rollback + propagation) → 90% + 65% = 78% | 0.3 |
 | 12 | 04.09.2026 | Шаг 6 micro-2: Propagation REQUIRES_NEW. Self-injection через @Lazy в NotificationService (поле `self`, конструктор с 3-м параметром), добавлен метод `auditSend` с `@Transactional(propagation = REQUIRES_NEW)`. Ученик сам догадался поставить `self.auditSend` ДО `emailSender.send` — иначе audit не успевал закоммититься на dev-fail. Мини-экзамен (REQUIRES_NEW + падение внешней TX) → 95% | 3.2 |
 | 13 | 05.09.2026 | Шаг 7 (старт): Flyway. Ученик сам написал AuditLog + AuditLogRepository + auditSend на AuditLog (вместо костыля [audit] в messages). pom.xml: +flyway-core. Создал V1/V2 миграции, но **с одним подчёркиванием** в имени (V1_init_messages.sql) — Flyway их НЕ ВИДИТ. Диагностика: Spring Boot 4 требует spring-boot-starter-flyway (добавил). После этого Flyway применил 2 миграции (Migrating v1 → v2 → Successfully applied). **Но** Hibernate всё равно делает drop+create — потому что в application.properties стоит `ddl-auto=create-drop`, а в application-dev.yml `ddl-auto:none` не перебивает. Решили переходить на production-like dev-стенд. Переименованы файлы миграций (V1__init_messages.sql, V2__init_audit_log.sql) | 3.0 |
+| 14 | 05.09.2026 | Шаг 7 (финал): реализация Подхода #3. `H2ServerConfig`: `@Component` + `BeanFactoryPostProcessor` (стартует TCP-сервер ДО Flyway). pom.xml: +explicit `h2` со `scope=compile` (transitive scope=runtime блокирует `org.h2.tools.Server` в IDE). `application.properties`: url=`jdbc:h2:tcp://localhost:9092/file:./data/notificationhub`, `ddl-auto=validate`. `application-dev.yml`: убран `ddl-auto:none`. Диагностика: `Connection refused: localhost:9092` — `BeanFactoryPostProcessor` без `@Component` не регистрируется → добавил `@Component`. Ученик сам ответил «почему не @Configuration: нет @Bean, side-effect» — правильно. Верификация: POST /messages → 201, kill app → restart → 5 записей на месте (`./data/notificationhub.mv.db` 45 КБ). Flyway: `Successfully validated 2 migrations`, Hibernate: 0 DDL в логе. Мини-экзамен (2 вопроса, **3/5**): checksum mismatch V3 (4/5) + V vs R миграции (2/5 — R надо подтянуть на собесе). Коммит `7634659` на main | 2.5 |
 
-**Итого:** 15.0 ч (старт курса №2 — 28.08.2026 17:10, последняя активность 05.09.2026)
+**Итого:** 17.5 ч (старт курса №2 — 28.08.2026 17:10, последняя активность 05.09.2026 15:32)
 
 ---
 
@@ -97,6 +98,8 @@
 | 6 | 6   | `@Transactional` — что будет при RuntimeException из метода | 🟢 90% | 04.09.2026 (поправлено про AOP-прокси + `PlatformTransactionManager`) |
 | 6 | 6   | `@TransactionalEventListener(AFTER_COMMIT)` + propagation | 🟡 65% | 04.09.2026 (поправлено: где публиковать события, outbox-паттерн) |
 | 6 | 6   | REQUIRES_NEW + падение внешней TX — откатится ли audit-запись? | 🟢 95% | 04.09.2026 (ответил правильно — вариант 2; не хватило формулировки «уже закоммиченная REQUIRES_NEW-TX не откатывается») |
+| 7 | 7   | Flyway checksum mismatch: что будет и как чинить | 🟢 80% | 05.09.2026 (идея верная — увидеть SQL через `ddl-auto:create` и вставить; но забыл главное: Flyway падает на checksum mismatch ДО любого DDL, чинить через возврат файла, не через БД) |
+| 7 | 7   | Flyway V vs R миграции | 🟡 40% | 05.09.2026 (направление верное — repeatable можно много раз; не знал про checksum и порядок применения) |
 
 ---
 
