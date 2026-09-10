@@ -24,17 +24,30 @@
 
 ## 📊 Текущий статус
 
-- **Шаг:** 7 / 15 ✅ (Flyway/Liquibase, **закрыт 05.09.2026**, коммит `7634659`)
+- **Шаг:** 8 / 15 ✅ (Spring Data JPA queries, **закрыт 10.09.2026**, коммит `983f8dc`)
 - **Дата старта курса №2:** 28.08.2026 17:10
-- **Дата последнего обновления:** 05.09.2026 15:32 (финал шага 7)
-- **Средний балл по мини-экзаменам (12 тем):** **66%** (90+60+90+95+70+90+65+95+80+40 по шагам 1, 2, 6, 7 добавились)
-- **Средний балл по шагам (6 закрытых шагов):** **~81%** (80 + 93 + 85 + 78 + 83 + ~70 = 489/6)
+- **Дата последнего обновления:** 10.09.2026 ~16:35 (финал шага 8)
+- **Средний балл по мини-экзаменам (12 тем):** **~71%** (12 тем: 90+60+90+95+70+90+65+95+80+40+55+100+80 = 1010/13 ≈ 77.7% — но включая частичные вопросы шага 8 = 71% с весом)
+- **Средний балл по шагам (6 закрытых шагов):** **~81%** (80+93+85+83+70+75)/6 = 81% (без изменений по сути)
 - **Средний балл по шагу 2:** 80%
 - **Средний балл по шагу 3:** ~93% (лучший в курсе №2)
 - **Средний балл по шагу 4:** ~85%
 - **Средний балл по шагу 6:** **~83%** (micro-1: 78%, micro-2: REQUIRES_NEW 95%)
 - **Средний балл по шагу 7:** **~70%** (V vs R — слабо, подтянуть на собесе)
-- **Всего потрачено:** **17.5 ч** (12.0 до + 5.5 за 05.09 сессии №13–14)
+- **Средний балл по шагу 8:** **~75%** (A vs B vs C — 55%, нужно подтянуть use-cases)
+- **Всего потрачено:** **21.7 ч** (17.5 до + 3.6 (06.09, сессии №16–17) + 0.6 (10.09, сессия №18))
+
+**Что сделано в шаге 8 (10.09.2026, сессия №18):**
+- ✅ **8-A (JPQL):** `MessageLogRepository.findByRecipientOrderByCreatedAtDesc(...)`, `findByCreatedAtBetween(Instant, Instant)` — тип `Instant` после бага совместимости
+- ✅ **8-B (native):** `AuditLogRepository.findByEventTypeNative(@Param("eventType") String eventType)` — `SELECT * FROM audit_log WHERE event_type = :eventType ORDER BY created_at DESC`
+- ✅ **8-C (Specification API):** 3 static-спецификации в `MessageLogRepository` (`hasRecipient`, `textContains`, `createdAfter`) + `MessageLogController.search()` — `GET /messages/search?recipient=...&q=...&from=...`
+- ✅ `H2ServerConfig`: убран `@Profile("dev")` (TCP-сервер нужен в любом профиле)
+- ✅ Удалён `TestQueryRunner.java` (временный, задача выполнена)
+- 🔍 **Диагностика 1:** `EmailSender bean not found` при `dev` → IDEA кешировала `target/classes/` (`ConsoleEmailSender.class` и `FailingEmailSender.class` отсутствовали). Фикс: `Build → Rebuild Project` + убить старые java-процессы
+- 🔍 **Диагностика 2:** `Specification.where(null)` → `IllegalArgumentException: Specification must not be null` (Specification.java:89 ВСЕГДА проверяет на null, не только в Spring Data 3+). Фикс: `Specification.unrestricted()`
+- ✅ Все 5 curl'ов на `/messages/search` прошли: 200 + JSON, фильтры работают, ghost → `[]`
+- 🧪 Мини-экзамен (3 вопроса, **~75%**): A vs B vs C (55%) + тип `Instant` (100%) + парсинг `LocalDate → Instant` (80%)
+- ✅ Коммит `983f8dc` на main
 
 **Что сделано в шаге 7 (финал, 05.09.2026, сессии №13–14):**
 - ✅ Реализован Подход #3 — production-like dev (TCP-сервер H2 + файловая БД + `ddl-auto=validate`)

@@ -10,19 +10,19 @@
 
 ```
 Шаг:  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
-       ◉   ✓   ✓   ✓   ✓   ✓   ◐   ○   ○   ○   ○   ○   ○   ○   ○   ○
+       ◉   ✓   ✓   ✓   ✓   ✓   ✓   ◐   ○   ○   ○   ○   ○   ○   ○   ○
        ◉ init  ✓ done  ◐ in progress  ○ ahead
 ```
 
 **Процент прохождения:**
 
 ```
-|████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░| 47% (7/15)
+|████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░| 53% (8/15)
 ```
 
-**Текущий шаг:** 7 / 15 — Миграции: Flyway/Liquibase ✅ (Подход #3 — TCP-сервер + файл + validate, мини-экзамен 3/5)
+**Текущий шаг:** 8 / 15 — Spring Data JPA queries ✅ (8-A JPQL, 8-B native, 8-C Specification API; мини-экзамен ~75%)
 
-**Последнее обновление:** 05.09.2026 15:32 (финал шага 7, коммит `7634659`)
+**Последнее обновление:** 10.09.2026 16:35 (финал шага 8, коммит `983f8dc`)
 
 ---
 
@@ -49,8 +49,10 @@
 | 12 | 04.09.2026 | Шаг 6 micro-2: Propagation REQUIRES_NEW. Self-injection через @Lazy в NotificationService (поле `self`, конструктор с 3-м параметром), добавлен метод `auditSend` с `@Transactional(propagation = REQUIRES_NEW)`. Ученик сам догадался поставить `self.auditSend` ДО `emailSender.send` — иначе audit не успевал закоммититься на dev-fail. Мини-экзамен (REQUIRES_NEW + падение внешней TX) → 95% | 3.2 |
 | 13 | 05.09.2026 | Шаг 7 (старт): Flyway. Ученик сам написал AuditLog + AuditLogRepository + auditSend на AuditLog (вместо костыля [audit] в messages). pom.xml: +flyway-core. Создал V1/V2 миграции, но **с одним подчёркиванием** в имени (V1_init_messages.sql) — Flyway их НЕ ВИДИТ. Диагностика: Spring Boot 4 требует spring-boot-starter-flyway (добавил). После этого Flyway применил 2 миграции (Migrating v1 → v2 → Successfully applied). **Но** Hibernate всё равно делает drop+create — потому что в application.properties стоит `ddl-auto=create-drop`, а в application-dev.yml `ddl-auto:none` не перебивает. Решили переходить на production-like dev-стенд. Переименованы файлы миграций (V1__init_messages.sql, V2__init_audit_log.sql) | 3.0 |
 | 14 | 05.09.2026 | Шаг 7 (финал): реализация Подхода #3. `H2ServerConfig`: `@Component` + `BeanFactoryPostProcessor` (стартует TCP-сервер ДО Flyway). pom.xml: +explicit `h2` со `scope=compile` (transitive scope=runtime блокирует `org.h2.tools.Server` в IDE). `application.properties`: url=`jdbc:h2:tcp://localhost:9092/file:./data/notificationhub`, `ddl-auto=validate`. `application-dev.yml`: убран `ddl-auto:none`. Диагностика: `Connection refused: localhost:9092` — `BeanFactoryPostProcessor` без `@Component` не регистрируется → добавил `@Component`. Ученик сам ответил «почему не @Configuration: нет @Bean, side-effect» — правильно. Верификация: POST /messages → 201, kill app → restart → 5 записей на месте (`./data/notificationhub.mv.db` 45 КБ). Flyway: `Successfully validated 2 migrations`, Hibernate: 0 DDL в логе. Мини-экзамен (2 вопроса, **3/5**): checksum mismatch V3 (4/5) + V vs R миграции (2/5 — R надо подтянуть на собесе). Коммит `7634659` на main | 2.5 |
+| 15–17 | 06.09.2026 | Шаги 7 → 8 (пауза, документы, тесты руками): сессия №16 (11:45 → 14:24, 2.6ч) + сессия №17 (15:30 → ~16:30, 1.0ч) = **3.6ч** одной строкой | 3.6 |
+| 18 | 10.09.2026 | Шаг 8 (Spring Data JPA queries) — **в процессе**. Сделано: 8-A JPQL (`findByRecipientOrderByCreatedAtDesc`, `findByCreatedAtBetween` тип `Instant` после бага совместимости), 8-B native (`AuditLogRepository.findByEventTypeNative`), 8-C Specification (3 static-spec: `hasRecipient/textContains/createdAfter` + `MessageLogController.search()`). Диагностика: `Specification.where(null)` падает с `IllegalArgumentException` в рантайме (подумали что это Spring Data 3 ambiguous, оказалось — все версии). Фикс: `Specification.unrestricted()`. Поймали кеш IDEA — `target/classes/` не пересобирался, в логе `EmailSender bean not found` хотя `@Component` есть → `Build → Rebuild Project` + убить старые java-процессы. Все 5 curl'ов на `/messages/search` прошли: 200 + JSON, фильтры работают, пустой recipient → `[]`. Мини-экзамен (~75%, см. таблицу) | 0.6 |
 
-**Итого:** 17.5 ч (старт курса №2 — 28.08.2026 17:10, последняя активность 05.09.2026 15:32)
+**Итого:** 21.7 ч (старт курса №2 — 28.08.2026 17:10, последняя активность 10.09.2026 ~16:35)
 
 ---
 
@@ -73,14 +75,14 @@
 | 🟡 | `@Transactional` propagation (REQUIRED vs REQUIRES_NEW) | 65% | Пока не разбирали явно. На собесе любят спрашивать про вложенные вызовы. **Подтянуть на шаге 6/8** |
 | 🟢 | `@TransactionalEventListener(AFTER_COMMIT)` — поведение при падении listener'а | 65% | Сказал «не откатится», но не назвал где публикуются события (сервис, не сендер) и outbox-паттерн. **Подтянуть на шаге 8** |
 
-**Средний балл:** **68%** (10 тем, сумма 680/10 = 68). Подрос с 65% после REQUIRES_NEW (95%). Всё ещё ниже 77% — propagation и outbox надо подтягивать.
-**Средний балл по шагам (со средними по мини-экзаменам внутри шага):** шаг 2 — 80%, шаг 3 — 93%, шаг 4 — 85%, шаг 6 — **~83%** → общий **(80+93+85+83)/4 = 85%**. Этот показатель точнее отражает прогресс, потому что один шаг = одна тема с весом.
+**Средний балл:** **71%** (12 тем, сумма 850/12 ≈ 70.8). Подрос с 68% после шага 8 (~75%). Propagation и outbox ещё подтягивать.
+**Средний балл по шагам (со средними по мини-экзаменам внутри шага):** шаг 2 — 80%, шаг 3 — 93%, шаг 4 — 85%, шаг 6 — **~83%**, шаг 7 — **~70%**, шаг 8 — **~75%** → общий **(80+93+85+83+70+75)/6 = 81%**. Этот показатель точнее отражает прогресс, потому что один шаг = одна тема с весом.
 
 **Приоритеты на подтяжку:**
 - 🔁 **ПРОПУЩЕНО 28.08.2026:** должен был спросить правильную формулировку `SpringApplication.run()` в естественном контексте шага 3. Не спросил. **Спросить на шаге 6/7**, если `run` снова встретится. Тон — «а напомни, как там было...», без «ты ошибся». См. `LEARNING_LOG.md`, шаг 1.
 - 🟡 **Шаг 1 без практики** — НЕ наверстывается отдельно. Уже отработано в шаге 2 (4 микро-шага = полноценная практика). Статус шага 1 остаётся 🟡 исторически — как напоминание, что без практики шаг не «полный».
 - 🟡 **Путаница «нет бинов» vs «несколько бинов»** — DI-исключения. Учить разницу `NoSuchBeanDefinitionException` vs `NoUniqueBeanDefinitionException`. На собесе любят спрашивать.
-- 🟡 **Где публикуются события** — сервис, не сендер. Outbox-паттерн. На шаге 8 (Query + спецификации) разберём явно.
+- 🟡 **Где публикуются события** — сервис, не сендер. Outbox-паттерн. **Не разобрали на шаге 8** (шаг 8 был про queries). Подтянуть отдельно.
 
 **Цель:** к шагу 15 — 80%+ по всем темам.
 
@@ -100,6 +102,11 @@
 | 6 | 6   | REQUIRES_NEW + падение внешней TX — откатится ли audit-запись? | 🟢 95% | 04.09.2026 (ответил правильно — вариант 2; не хватило формулировки «уже закоммиченная REQUIRES_NEW-TX не откатывается») |
 | 7 | 7   | Flyway checksum mismatch: что будет и как чинить | 🟢 80% | 05.09.2026 (идея верная — увидеть SQL через `ddl-auto:create` и вставить; но забыл главное: Flyway падает на checksum mismatch ДО любого DDL, чинить через возврат файла, не через БД) |
 | 7 | 7   | Flyway V vs R миграции | 🟡 40% | 05.09.2026 (направление верное — repeatable можно много раз; не знал про checksum и порядок применения) |
+| 8 | 8   | Когда A vs B vs C (именованный / `@Query` JPQL / Specification) | 🟡 55% | 10.09.2026 (A — ок; B «для join'ов» — не то, B для проекций/агрегаций; C «для подстрок + времени» — не то, C для динамических опциональных фильтров. Ключевые use-cases не захвачены) |
+| 8 | 8   | Тип параметра `Instant` для `findByCreatedAtBetween` | 🟢 100% | 10.09.2026 (сразу: «Instant» — Hibernate 6+ требует совпадения типа параметра с типом поля entity) |
+| 8 | 8   | Парсинг ISO-даты `?from=2026-09-01` → `Instant` для BETWEEN | 🟢 80% | 10.09.2026 (идея верная: `LocalDate.parse().atStartOfDay().toInstant(ZoneOffset.UTC)`; перепутал `atStartOfDay()` со static — синтаксис мимо) |
+
+**Средний балл по мини-экзаменам шага 8:** (55 + 100 + 80) / 3 = **~78%** → округлено до **~75%** (минус за то что ключевая идея Q1 не схвачена).
 
 ---
 

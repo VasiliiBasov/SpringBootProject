@@ -19,7 +19,7 @@
 | # | Проект | Тема | Статус | Шагов | Часов | Балл | Ссылка на дневник |
 |---|--------|------|--------|-------|-------|------|-------------------|
 | 1 | **SpringCoreProject** | Spring Core (без Boot) | ✅ Завершён | 12 / 12 | 17.2 | ~85% | `SpringCoreProject/COURSE_HANDBOOK.md` |
-| 2 | **SpringBootProject** | Spring Boot + JPA + Security | ⏳ В процессе | 7 / 15 (шаг 7 закрыт) | 17.5 (старт 28.08.2026 17:10, последняя активность 05.09.2026 15:32) | ~81% (средний по шагам) | `SpringBootProject/COURSE_HANDBOOK.md` |
+| 2 | **SpringBootProject** | Spring Boot + JPA + Security | ⏳ В процессе | 8 / 15 (шаг 8 закрыт) | 21.7 (старт 28.08.2026 17:10, последняя активность 10.09.2026 ~16:35) | ~81% (средний по шагам) | `SpringBootProject/COURSE_HANDBOOK.md` |
 
 ### Не использовать как проекты в этой статистике
 
@@ -38,8 +38,8 @@
 | Проект | Даты | Часов |
 |--------|------|-------|
 | SpringCoreProject (Core) | 24.08.2026 → 28.08.2026 | 17.2 |
-| SpringBootProject (Boot) | 28.08.2026 → _TBD_ | 17.5 (старт в 17:10, активность до 05.09.2026 15:32) |
-| **ИТОГО** | | **34.7 ч** |
+| SpringBootProject (Boot) | 28.08.2026 → _TBD_ | 21.7 (старт в 17:10, активность до 10.09.2026 ~16:35) |
+| **ИТОГО** | | **38.9 ч** |
 
 **Средняя скорость по Core:** ~1.4 ч/шаг (12 шагов за 17.2 ч)
 
@@ -71,7 +71,7 @@
 - [x] Spring Data JPA: `@Entity`, `JpaRepository` (шаг 5, ✅ разбор продвинутой проблемы)
 - [x] `@Transactional` (шаг 6 micro-1 + micro-2, 🟢 ~83%) — rollback-механизм (90%), REQUIRES_NEW + self-injection (95%). Подтянуть: outbox-паттерн, остальные режимы propagation (NESTED/MANDATORY/etc.)
 - [x] Миграции: Flyway (шаг 7, 🟡 ~70%) — production-like dev (TCP + файл + validate). Flyway naming + validate (🟢 80%), V vs R миграции (🟡 40% — подтянуть на собесе)
-- [ ] JPQL, native, Specification
+- [x] Query: JPQL, native, Specification (шаг 8, 🟡 ~75%) — A vs B vs C use-cases (🟡 55% — подтянуть), `Instant` для полей entity (🟢 100%), `LocalDate → Instant` парсинг (🟢 80%)
 - [ ] Spring Security basics
 - [ ] JWT
 - [ ] Method Security (`@PreAuthorize`)
@@ -137,14 +137,15 @@
 - [x] Объяснить IoC, DI, Bean Lifecycle своими словами (курс №1, 85%)
 - [x] Написать REST API на Spring Boot с валидацией (курс №2, шаги 3–4 ✅, ~89%)
 - [x] Подключить БД через Spring Data JPA, написать `@Transactional` сервис (курс №2, шаги 5–6 ✅, ~78%)
+- [x] Написать миграции через Flyway, делать JPQL/native/Specification запросы (курс №2, шаги 7–8 ✅, ~73%)
 - [ ] Защитить endpoints через Spring Security + JWT (курс №2)
 - [ ] Написать интеграционный тест с `@SpringBootTest` (курс №2)
 - [ ] Ответить на 30+ вопросов собеседования без запинки (финальная шпаргалка)
 
-**Прогресс:** 3 / 6 (50%) — по контрольным точкам чеклиста
+**Прогресс:** 4 / 6 (67%) — по контрольным точкам чеклиста
 
-**Прогресс по шагам:** 6 / 15 (40%) — старт Boot + автоконфигурация + REST + DTO + JPA + @Transactional (см. `STATS.md`)
+**Прогресс по шагам:** 8 / 15 (53%) — старт Boot + автоконфигурация + REST + DTO + JPA + @Transactional + Flyway + Queries (см. `STATS.md`)
 
 ---
 
-*Файл скопирован из `SpringCoreProject` 28.08.2026 17:10 при старте курса №2. Последнее обновление: 04.09.2026 (после шага 6 micro-1).*
+*Файл скопирован из `SpringCoreProject` 28.08.2026 17:10 при старте курса №2. Последнее обновление: 10.09.2026 (после шага 8).*

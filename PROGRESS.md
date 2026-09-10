@@ -12,9 +12,31 @@
 
 ## 📌 Где мы сейчас
 
-**Текущий шаг:** 7 / 15 — Flyway/Liquibase ✅ (Подход #3 реализован и проверен, коммит `7634659`)
-**Следующий шаг:** шаг 8 — Query: JPQL, native, Specification
-**Процент:** 47% (7/15) — шаги 1, 2, 3, 4, 5, 6 (micro-1 + micro-2), 7 закрыты
+**Текущий шаг:** 8 / 15 — Spring Data JPA queries ✅ (8-A JPQL, 8-B native, 8-C Specification; коммит `983f8dc`)
+**Следующий шаг:** шаг 9 — Spring Security basics (`SecurityFilterChain`, `BCryptPasswordEncoder`)
+**Процент:** 53% (8/15) — шаги 1, 2, 3, 4, 5, 6 (micro-1 + micro-2), 7, 8 закрыты
+
+**Что сделано в шаге 8 (финал, 10.09.2026, сессия №18):**
+- ✅ **8-A (JPQL):** `MessageLogRepository.findByRecipientOrderByCreatedAtDesc(...)`, `findByCreatedAtBetween(Instant, Instant)` — тип параметра `Instant` после бага совместимости (Hibernate 6+ требует совпадения типа параметра с типом поля entity)
+- ✅ **8-B (native):** `AuditLogRepository.findByEventTypeNative(@Param("eventType") String eventType)` — `SELECT * FROM audit_log WHERE event_type = :eventType ORDER BY created_at DESC`, тест с seed 3 записей (2× EMAIL_SENT, 1× EMAIL_FAILED) — работает
+- ✅ **8-C (Specification API):** 3 static-спецификации в `MessageLogRepository` (`hasRecipient`, `textContains`, `createdAfter`) с null-проверками и `cb.lower()` для case-insensitive LIKE. `MessageLogController.search()` — constructor injection, `Specification.unrestricted()` для null-safe chaining (фикс: `Specification.where(null)` падает с `IllegalArgumentException` ВСЕГДА, а не только в Spring Data 3+)
+- ✅ `H2ServerConfig`: убран `@Profile("dev")` (TCP-сервер нужен в любом профиле, иначе при `test-query` падает подключение)
+- ✅ `ConsoleEmailSender` `@Profile({"dev","test-query"})` — оставлено как есть
+- 🔍 **Диагностика 1:** `EmailSender bean not found` при `dev` → оказалось, IDEA кешировала `target/classes/` без пересборки (`ConsoleEmailSender.class` и `FailingEmailSender.class` отсутствовали). Фикс: `Build → Rebuild Project` + убить старые java-процессы
+- 🔍 **Диагностика 2:** `Specification.where(null)` → `IllegalArgumentException: Specification must not be null` — сигнатура `Specification.java:89` ВСЕГДА проверяет на null (мы перепутали с `and()/or()`, которые null-толерантны)
+- ✅ Верификация: все 5 curl'ов на `/messages/search` вернули 200 + JSON (без фильтра / `?recipient=...` / `?q=TCP` / combo / ghost → `[]`)
+- 🧪 Мини-экзамен (3 вопроса, **~75%**): A vs B vs C (55%) + тип `Instant` (100%) + парсинг `LocalDate → Instant` (80%)
+- ✅ Удалён `TestQueryRunner.java` (временный runner, задача выполнена)
+- ✅ Коммит `983f8dc` на main
+
+**Сравнение 3 способов запросов (на собесе любят):**
+
+| Способ | Когда | Код |
+|---|---|---|
+| **Именованный метод** | Простые фиксированные запросы | `findByRecipient(String r)` |
+| **`@Query` JPQL** | Проекции/агрегации/DTO, сложная логика | `SELECT new com.example.MessageStats(recipient, COUNT(id)) ... GROUP BY recipient` |
+| **`@Query` Native** | Специфика БД (JSON, окна, `FOR UPDATE`) | `SELECT * FROM messages WHERE event_type = ?` |
+| **Specification** | Динамические фильтры, любые комбинации | `(root, query, cb) -> cb.equal(...)` |
 
 **Что сделано в шаге 7 (финал, 05.09.2026, сессии №13–14):**
 - ✅ Ученик **сам** написал `AuditLog` entity + `AuditLogRepository` + переписал `auditSend` на сохранение в `audit_log`
@@ -31,11 +53,11 @@
 
 **Архитектурное решение (prod-like dev):** TCP + файл = persistent + параллельный доступ из IDEA + точно так же конфигурится реальный PostgreSQL/MySQL на проде через TCP. Ученик явно выбрал этот подход для джоб-релевантности.
 
-**Ближайшие шаги (шаг 8 — Query):**
-1. JPQL: `SELECT m FROM MessageLog m WHERE m.recipient = :r` (поиск по получателю)
-2. Native query: `SELECT * FROM messages WHERE created_at > ?` (производительность, специфика БД)
-3. Criteria API / Specification: динамические фильтры (по eventType + date range)
-4. (Опционально) Outbox-паттерн через дополнительную таблицу — `outbox_events` + scheduled job (это и подтянет пробел из шага 6)
+**Ближайшие шаги (шаг 9 — Spring Security basics):**
+1. `SecurityFilterChain` — цепочка фильтров, дефолтный `formLogin()` и `httpBasic()`
+2. `BCryptPasswordEncoder` — хеширование паролей
+3. InMemory `UserDetailsService` для учебного проекта
+4. (Опционально) JDBC `UserDetailsService` поверх нашей H2 БД (использовать существующую схему)
 
 **Что сделано в шаге 6 (micro-2, 04.09.2026):**
 - ✅ `NotificationService` дополнен self-injection через `@Lazy` (поле `self`, конструктор с 3-м параметром)

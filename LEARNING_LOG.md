@@ -762,6 +762,114 @@ H2 web console в этом проекте **отключена полность�
 
 ---
 
+## Шаг 8: Spring Data JPA queries (10.09.2026, сессия №18, ~0.6 ч активной работы, сессия ещё в процессе)
+
+> ⚠️ Ученик **сам** приходил к выводам по 8-A и 8-B (ставил правильный тип `Instant`, понимал native-query). По 8-C путал `Specification.where(null)` — это общий баг, не специфика Spring Data 3. Все 5 curl'ов прошли успешно. Сессия ещё идёт, оценка средняя (~75%).
+
+### Микро-шаг 8-A: JPQL (именованные методы + `@Query`)
+
+**Что разобрали:**
+
+- **Именованные методы** (`findByRecipientOrderByCreatedAtDesc`) — Spring Data парсит имя метода и генерирует JPQL автоматически. Поддерживает цепочку операторов: `findBy…OrderBy…Between…Like…`
+- **`@Query` JPQL** — `@Query("SELECT m FROM MessageLog m WHERE m.recipient = :r")` — для случаев, когда именованный метод не выразить
+- **Параметры:** `?1` (позиционные) или `:name` (именованные с `@Param("name")`)
+
+**БАГ (поймали в 8-A):** метод `findByCreatedAtBetween(Date, Date)` падал с `IllegalArgumentException`, потому что поле `MessageLog.createdAt` имеет тип `Instant`, а параметр был `LocalDateTime`. Hibernate 6+ требует **точного совпадения типов**. **String→Instant автоконвертации НЕТ.**
+
+**Фикс:** `findByCreatedAtBetween(@Param("start") Instant start, @Param("end") Instant end)`. Контроллер парсит `String`→`Instant` руками (`LocalDate.parse(from).atStartOfDay().toInstant(ZoneOffset.UTC)`).
+
+### Микро-шаг 8-B: Native query
+
+**Что разобрали:**
+
+- **`@Query(nativeQuery = true, value = "SELECT * FROM audit_log WHERE event_type = :eventType ORDER BY created_at DESC")`** — SQL пишется в **нативном диалекте БД** (для H2 = почти ANSI SQL, для Postgres = специфика Postgres)
+- **Когда использовать:** специфика БД (JSON-операторы, оконные функции, `FOR UPDATE`, `RETURNING`), или когда хочется выразить запрос **ровно так, как он выглядит в БД** для explain-анализа
+- **Trade-off:** теряем type-safety и переносимость между БД. Если завтра переедем с H2 на Postgres — `native=true` запрос может сломаться
+
+**Тест:** seed 3 записей (2× EMAIL_SENT, 1× EMAIL_FAILED), `findByEventTypeNative("EMAIL_SENT")` → 2 записи, отсортированы по `created_at DESC` — работает ✅
+
+### Микро-шаг 8-C: Specification API (динамические фильтры)
+
+**Что разобрали:**
+
+- **Интерфейс `Specification<T>`** — функциональный интерфейс `(Root<T> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> Predicate`
+- **`JpaSpecificationExecutor<T>`** — добавляет к репо методы `findAll(Specification)`, `count(Specification)`, `exists(Specification)`
+- **`Specification.where(spec1).and(spec2).or(spec3)`** — fluent API для комбинирования
+- **3 спецификации написали:**
+  - `hasRecipient(String)` → `cb.equal(root.get("recipient"), recipient)` (null → `cb.conjunction()`)
+  - `textContains(String)` → `cb.like(cb.lower(root.get("text")), "%" + text.toLowerCase() + "%")` (case-insensitive)
+  - `createdAfter(Instant)` → `cb.greaterThanOrEqualTo(root.get("createdAt"), instant)`
+
+**КРИТИЧЕСКИЙ БАГ (поймали в 8-C):** контроллер упал с `IllegalArgumentException: Specification must not be null`. Я **неправильно** посоветовал `Specification.where(null).and(...)` — думал, что `where(null)` это null-толерантный старт (как `and(null)`). **Ошибся.** `Specification.where()` (Specification.java:89) **ВСЕГДА** вызывает `Assert.notNull(spec, "Specification must not be null")` — во всех версиях Spring Data.
+
+**Правильный фикс:** `Specification.unrestricted()` (Spring Data 3+) — пустая спецификация, "верни всё". Или `cb.conjunction()` — то же самое на уровне Criteria API.
+
+**Второй баг (поймали в 8-C):** `root.get("text")` — поле entity (camelCase), паттерн `"%" + text.toLowerCase() + "%"` — **второй** аргумент `cb.like()`. НЕ первый. Частая ошибка.
+
+### Диагностика: `EmailSender bean not found`
+
+**Симптом:** приложение не стартует, `APPLICATION FAILED TO START`, профиль `dev` активен, но `EmailSender` не находится.
+
+**Корень:** IDEA **закешировала** `target/classes/`. Файлы `ConsoleEmailSender.class` и `FailingEmailSender.class` **отсутствовали** в `target/classes/com/vasilii/notificationhub/service/` (были только `EmailSender.class` и `NotificationService.class`).
+
+**Фикс:** `Build → Rebuild Project` в IDEA + убить параллельные java-процессы (`Get-Process java | Stop-Process`).
+
+**Урок:** **прежде чем диагностировать DI-проблему** — проверь `target/classes/`. Если `.class` файла нет — Spring его и не увидит, даже если в исходниках `@Component` стоит. **«В логе нет упоминания моего бина»** — верный признак что-то с компиляцией, а не с конфигурацией.
+
+
+---
+
+
+### Мини-экзамен (3 вопроса, **~75%**)
+
+**Вопрос 1:** У тебя в `MessageLogRepository` есть 3 способа фильтрации сообщений по recipient. Клиент делает `GET /messages/search?recipient=alice@example.com`. **В каких случаях ты выберешь A, B, C?** 3 конкретных бизнес-приёма.
+
+**Ответ ученика:** A — «для получения сортированного списка всех сообщений одного из получателей». B — «для получения значений из таблиц с join». C — «например для получения сообщения от реципиента с такой то подстрокой и отправленное в такое то время».
+
+**Оценка:** 🟡 **55%**. A — ок. B — не то, B для проекций/агрегаций/DTO (например, `SELECT new com.example.MessageStats(recipient, COUNT(id)) ... GROUP BY recipient`), а не для join'ов (для join'ов проще именованный метод). C — не то, C для **динамических опциональных фильтров** (8 фильтров, любой может прийти, любые комбинируются), а не «подстрока + время». **Ключевые use-cases не захвачены** — это самое важное.
+
+**Правильные 3 бизнес-кейса:**
+
+| # | Когда |
+|---|---|
+| A | **Фиксированный, узкий запрос** который точно будет нужен несколько раз: «получить все сообщения конкретного пользователя» |
+| B | **Проекции/агрегации/DTO**: `SELECT new com.example.MessageStats(recipient, COUNT(id)) ... GROUP BY recipient` |
+| C | **Поиск по форме**: фильтры приходят от клиента, неизвестно заранее какие, нужно AND/OR-комбинировать динамически |
+
+**Вопрос 2a:** В `findByCreatedAtBetween` — параметр какого типа, если поле `MessageLog.createdAt` имеет тип `Instant`?
+
+**Ответ ученика:** **`Instant`**.
+
+**Оценка:** 🟢 **100%**. Hibernate 6+ требует, чтобы тип параметра `@Query` совпадал с типом поля entity. У `MessageLog.createdAt` — `Instant` → параметр `Instant`. String→Instant автоконвертации нет.
+
+**Вопрос 2b:** Клиент хочет передавать дату как `?from=2026-09-01&to=2026-09-30` (только дата, без времени). Какой самый чистый способ — **без** специального `Converter`/`Formatter`?
+
+**Ответ ученика:** «как у нас в тестквери Instant weekAgo = now.minus(7, ChronoUnit.DAYS)».
+
+**Оценка:** 🟢 **80%** (идея верная, синтаксис мимо). Цепочка `LocalDate.parse("2026-09-01").atStartOfDay().toInstant(ZoneOffset.UTC)` верная, но `atStartOfDay()` — это **метод экземпляра** `LocalDate`, а не static. Сначала создаёшь `LocalDate` через `parse`, потом у этого объекта вызываешь `atStartOfDay()`. У ученика в голове верная цепочка — просто порядок методов чуть не тот.
+
+**Средний балл по мини-экзаменам шага 8:** (55 + 100 + 80) / 3 = **~78%** → округлено до **~75%** (минус за то что ключевая идея Q1 не схвачена).
+
+### Шпаргалка (новое)
+
+69. **`JpaSpecificationExecutor<T>`** — добавляет к репо методы `findAll(Specification)`, `count`, `exists`. Подключается вторым интерфейсом в `extends JpaRepository<T, ID>, JpaSpecificationExecutor<T>`
+70. **`Specification.where(spec1).and(spec2)`** — fluent API, `and/or` **пропускают** `null` (возвращают `this` если один из аргументов `null`)
+71. **`Specification.where(null)` — ВСЕГДА падает** с `IllegalArgumentException` (Specification.java:89, все версии Spring Data). **Не** путать с `and/or(null)`!
+72. **`Specification.unrestricted()`** (Spring Data 3+) — пустая спецификация, "верни всё". **Используй для null-safe старта** вместо `where(null)`
+73. **`cb.conjunction()`** — эквивалент `Specification.unrestricted()` на уровне Criteria API. Всегда `true`, ничего не фильтрует
+74. **`root.get("fieldName")`** — имя Java-поля (camelCase), **не** колонки. `root.get("createdAt")` для поля `createdAt`, не `created_at`
+75. **`cb.equal`** (точное), `cb.like` (паттерн `%x%`), `cb.greaterThanOrEqualTo` (>=), `cb.lessThan` (<)
+76. **Case-insensitive LIKE:** `cb.like(cb.lower(root.get("text")), "%" + text.toLowerCase() + "%")` — оборачиваем **поле** в `cb.lower()` И к **паттерну** применяем `.toLowerCase()`. **НЕ** применяй `toLowerCase` к самому паттерну `"%TEXT%"`!
+77. **null-параметры:** обрабатывай **внутри** спецификации (возврат `cb.conjunction()` или `null`) — короче, чем guard'ы снаружи в контроллере
+78. **3 способа запросов — когда:**
+
+| Способ | Когда |
+|---|---|
+| Именованный метод | Простые фиксированные запросы |
+| `@Query` JPQL | Проекции/агрегации/DTO, сложная логика |
+| `@Query` Native | Специфика БД (JSON, окна, `FOR UPDATE`) |
+| Specification | Динамические опциональные фильтры |
+| QueryDSL (не разбирали) | Много динамики, type-safe (генерирует Q-классы) |
 
 ### Зафиксированное правило: фиксация времени
 
