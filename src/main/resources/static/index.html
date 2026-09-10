@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Notification Hub</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>📨 Notification Hub</h1>
+    <div class="user-area" id="userArea">
+      <!-- заполнится JS: либо кнопка "Войти", либо "user / Выйти" -->
+    </div>
+  </header>
+
+  <main>
+    <!-- Логин-модалка (показ через JS) -->
+    <div id="loginModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <h2>Войти</h2>
+        <form id="loginForm">
+          <label>
+            Имя пользователя
+            <input type="text" id="loginUsername" required autocomplete="username" />
+          </label>
+          <label>
+            Пароль
+            <input type="password" id="loginPassword" required autocomplete="current-password" />
+          </label>
+          <div class="modal-actions">
+            <button type="button" id="loginCancel">Отмена</button>
+            <button type="submit" class="primary">Войти</button>
+          </div>
+        </form>
+        <p class="hint" id="loginHint"></p>
+      </div>
+    </div>
+
+    <section class="panel">
+      <h2>Отправить сообщение</h2>
+      <form id="sendForm" class="row-form">
+        <input type="email" id="recipient" placeholder="recipient@example.com" required />
+        <input type="text" id="text" placeholder="Текст сообщения" required />
+        <button type="submit" class="primary">Отправить</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Фильтры поиска</h2>
+      <form id="searchForm" class="row-form">
+        <input type="text" id="filterRecipient" placeholder="recipient" />
+        <input type="text" id="filterQ" placeholder="содержит текст" />
+        <input type="date" id="filterFrom" />
+        <input type="date" id="filterTo" />
+        <button type="submit" class="primary">Искать</button>
+        <button type="button" id="clearFilters">Сброс</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Сообщения</h2>
+        <span class="counter" id="messageCount">0</span>
+      </div>
+      <ul id="messages" class="messages"></ul>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Audit log</h2>
+        <span class="counter" id="auditCount">0</span>
+      </div>
+      <ul id="audit" class="audit"></ul>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
