@@ -874,3 +874,95 @@ H2 web console в этом проекте **отключена полность�
 ### Зафиксированное правило: фиксация времени
 
 (см. `PROGRESS.md`, сессия №14) При команде «пауза» / «закончили» / «продолжим» — **обязательно** обновить 4 файла: `STATS.md`, `PROGRESS.md`, `OVERALL_STATS.md`, `HANDOFF.md`. Без напоминания от ученика.
+
+
+---
+
+## Шаг 9: Spring Security basics (11.09.2026, сегодня)
+
+> ⚠️ Ученик **сам** создал `SecurityConfig.java` в 9-B (с пропущенным слэшем `"style.css"` → поправили), и дописал 9-C (с ошибкой `requestMatchers("POST", ...)` со String → поправили на `HttpMethod.POST` enum). По теории 9-B/9-C — крепкий материал: сходу понял порядок matcher'ов и разницу `permitAll` vs `authenticated`. Пробел: `UserDetailsService` путал «на каждый запрос» вместо «один раз на логин» — не критично, но на собесе надо говорить точнее. Бонус: установлен **PowerShell 7.4.6** (победили проблему splatting `@body.json` в IDEA-терминале, workaround `-d (Get-Content -Raw file)`).
+
+### Микро-шаг 9-A: подключение spring-boot-starter-security
+
+**Что сделали:**
+- `pom.xml`: +`spring-boot-starter-security` (Boot BOM, без явной версии)
+- После рестарта — Security **включён по дефолту**: логин-форма, Basic Auth для API, headers безопасности
+- **Headers** (видны в `curl -i`): `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection: 0`
+- **Дефолтный юзер** в логе: `Using generated security password: <uuid>`. Логин `user`, пароль — uuid из лога
+- Создан фронт (path C): `src/main/resources/static/{index.html,app.js,style.css}` — статический UI, тянет данные через `fetch("/messages")`
+- Порт 8081 (из `application.properties`, не дефолтный 8080)
+
+**Верификация:** `curl -u "user:<uuid>" http://localhost:8081/messages` → 200 + JSON 6 сообщений. UI открывается по `http://localhost:8081/`.
+
+### Микро-шаг 9-B: свой `SecurityFilterChain`
+
+**Что сделали:**
+- Создан `src/main/java/com/vasilii/notificationhub/config/SecurityConfig.java` (учеником)
+- `@Configuration` + `@Bean SecurityFilterChain filterChain(HttpSecurity http)`
+- `.authorizeHttpRequests(auth -> ...)`:
+  - `requestMatchers("/", "/index.html", "/app.js", "/style.css", "/favicon.ico", "/error").permitAll()` — статика публичная
+  - `.anyRequest().authenticated()` — всё остальное требует логин
+- `.httpBasic(Customizer.withDefaults())` — Basic Auth для curl
+- `.csrf(csrf -> csrf.disable())` — для REST API (не для HTML-форм)
+
+**Диагностика:** ученик пропустил слэш у `"style.css"` (было `style.css`, не `/style.css`) → `pattern must start with a /`. **Фикс:** добавить `/` перед style.css.
+
+**Верификация (3 проверки):**
+- `curl -i http://localhost:8081/` → 200 + HTML
+- `curl -i http://localhost:8081/messages` → 401 (аноним)
+- `curl -i -u "user:<uuid>" http://localhost:8081/messages` → 200 + JSON
+
+**Побочное:** PowerShell shell-экранирование `<uuid>` (file redirect) — лечится кавычками `"user:uuid"`.
+
+### Микро-шаг 9-C: InMemoryUserDetailsManager + BCrypt + роли
+
+**Что сделали:**
+- `PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }` — `@Bean`
+- `UserDetailsService userDetailsService(PasswordEncoder encoder)`:
+  - `alice` / `encoder.encode("alice123")` / `roles("USER")`
+  - `admin` / `encoder.encode("admin123")` / `roles("USER", "ADMIN")`
+  - возвращает `new InMemoryUserDetailsManager(alice, admin)`
+- В `filterChain`:
+  - `import org.springframework.http.HttpMethod;`
+  - `requestMatchers(HttpMethod.POST, "/messages").hasRole("ADMIN")` — **обязательно с `HttpMethod`, иначе правило ловит все методы**
+
+**Диагностика:** ученик написал `requestMatchers("POST", "/messages")` со **строкой** `"POST"`. Java выбрала перегрузку `requestMatchers(String...)`, обе строки стали URL-паттернами → `"POST"` без слэша → ошибка. **Фикс:** `HttpMethod.POST` (enum) — Java выбирает перегрузку `requestMatchers(HttpMethod, String...)`.
+
+**Верификация (5 проверок):**
+- `GET /` (аноним) → 200 (UI публичный)
+- `GET /messages` (аноним) → 401
+- `GET /messages` (alice) → 200 + JSON
+- `POST /messages` (alice) → 403 (USER не пишет)
+- `POST /messages` (admin) → 201 + JSON `{id: 38, ...}`
+
+**Бонус-диагностика:** PowerShell splatting `@body.json` ломается даже в PS 7 (включая IDEA-терминал) → `SplattedNotPermitted`. **Workaround:** `-d (Get-Content -Raw body.json)` — переменная, не splatting. Установлен **PowerShell 7.4.6** через msi, настроен в IDEA (File → Settings → Tools → Terminal → Shell path → `C:\Program Files\PowerShell\7\pwsh.exe`).
+
+### Мини-экзамен (4 вопроса, **~87%**)
+
+1. **UserDetailsService — когда вызывается: на каждый запрос или один раз?** — 🟡 60%
+   - Ответ ученика: «при каждом запросе, где нужна роль» (неверно)
+   - Правильно: **один раз на логин**. Дальше роль берётся из `SecurityContext`. На каждый запрос UserDetailsService не вызывается.
+
+2. **`requestMatchers` без `HttpMethod` — какие методы попадают?** — 🟢 100%
+   - Сразу ответил: «любые». `requestMatchers("/messages").hasRole("ADMIN")` без метода = и GET, и POST требуют ADMIN. Поэтому в 9-C обязательно `HttpMethod.POST`.
+
+3. **Порядок matcher'ов: что если `anyRequest().authenticated()` поставить первым?** — 🟢 100%
+   - Сходу: «до проверки ролей не дойдёт, anyRequest перекроет всё». Главный нюанс Security — порядок сверху вниз.
+
+4. **`permitAll` vs `authenticated()` для статики и API** — 🟢 100%
+   - Верно: `permitAll` пускает всех анонимов, `authenticated` требует залогинен. Понял разницу между `GET /app.js` (permitAll → 200) и `GET /api/users` (anyRequest → 401).
+
+### Шпаргалка (новое)
+
+47. **`SecurityFilterChain` (@Bean)** — настройка конвейера фильтров (правила доступа + способ логина + защитные штуки). Стандартный способ настройки Security в Spring Boot 3+
+48. **`authorizeHttpRequests`** — настройка правил доступа по URL и/или HTTP-методу
+49. **`permitAll` / `authenticated` / `hasRole` / `hasAnyRole` / `denyAll`** — правила доступа
+50. **Порядок matcher'ов** — Spring проверяет сверху вниз, **до первого совпадения**. `anyRequest()` всегда последним, иначе всё перекроет
+51. **`HttpMethod.POST` (enum) vs `"POST"` (String)** — для матчинга по HTTP-методу обязательно enum, иначе Spring считает оба аргумента URL-паттернами
+52. **`httpBasic(Customizer.withDefaults())`** — Basic Auth (для API/curl). Альтернативы: `formLogin` (HTML-формы), `oauth2Login` (OAuth2/JWT)
+53. **`csrf.disable()`** — для REST API (curl/Postman). Для HTML-форм с браузером — оставляем, Spring подставит токен
+54. **`UserDetailsService.loadUserByUsername(username)`** — возвращает `UserDetails` или кидает `UsernameNotFoundException`. **Вызывается один раз на логин**, дальше роль из `SecurityContext`
+55. **`PasswordEncoder.encode(plain)`** — хэширование при сохранении. `PasswordEncoder.matches(plain, hash)` — проверка при логине
+56. **`BCryptPasswordEncoder`** — стандартный энкодер. Хэш каждый раз разный (встроенная «соль»), но `matches()` всё равно `true`. Сила 10 (по дефолту, ~100ms на хэш, против brute-force)
+57. **`InMemoryUserDetailsManager`** — реализация `UserDetailsService` для тестов/разработки. Для прода — заменяем на `JdbcUserDetailsManager` или свою
+58. **Префикс роли `ROLE_`** — в `User.builder().roles("ADMIN")` пишем `"ADMIN"`, в `hasRole("ADMIN")` тоже `"ADMIN"`. Spring сам добавляет `ROLE_` при матчинге

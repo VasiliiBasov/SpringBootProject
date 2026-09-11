@@ -12,22 +12,20 @@
 
 ## 📌 Где мы сейчас
 
-**Текущий шаг:** 8 / 15 — Spring Data JPA queries ✅ (8-A JPQL, 8-B native, 8-C Specification; коммит `983f8dc`)
-**Следующий шаг:** шаг 9 — Spring Security basics (`SecurityFilterChain`, `BCryptPasswordEncoder`)
-**Процент:** 53% (8/15) — шаги 1, 2, 3, 4, 5, 6 (micro-1 + micro-2), 7, 8 закрыты
+**Текущий шаг:** 9 / 15 — Spring Security basics ✅ (9-A starter, 9-B SecurityFilterChain, 9-C InMemory users + BCrypt + roles; коммит `e93bbbe`)
+**Следующий шаг:** шаг 10 (TBD — не определён в плане; возможно JWT/OAuth2 или кэш/RateLimit)
+**Процент:** 60% (9/15) — шаги 1, 2, 3, 4, 5, 6 (micro-1 + micro-2), 7, 8, 9 закрыты
+
+**Что сделано в шаге 9 (финал, 11.09.2026):**
+- ✅ **9-A:** `pom.xml` + `spring-boot-starter-security` (коммит `3174036`). Дефолтный Security подтверждён: `curl -u "user:<uuid>"` → 200 + JSON, headers видны. Фронт (path C) создан: `static/index.html` + `app.js` + `style.css`. Порт 8081.
+- ✅ **9-B:** `SecurityConfig.java` с `@Bean SecurityFilterChain` — `permitAll` для статики (`/`, `/index.html`, `/app.js`, `/style.css`, `/favicon.ico`, `/error`), `anyRequest().authenticated()` для API, `httpBasic(Customizer.withDefaults())` для логина через curl, `csrf.disable()` для REST. Фикс: пропустил слэш у `"style.css"` → `pattern must start with a /`. 3 проверки прошли: 200/401/200.
+- ✅ **9-C:** `BCryptPasswordEncoder` + `InMemoryUserDetailsManager` с 2 юзерами: `alice/alice123` (USER), `admin/admin123` (USER+ADMIN). `requestMatchers(HttpMethod.POST, "/messages").hasRole("ADMIN")` — **обязательно с `HttpMethod`, иначе rule ловит и GET**. 5 проверок прошли.
+- 🔍 **Бонус-диагностика 1:** `requestMatchers("POST", "/messages")` со String `"POST"` → Spring парсит оба аргумента как URL-паттерны → `pattern must start with a /`. Фикс: `HttpMethod.POST` (enum), а не String.
+- 🔍 **Бонус-диагностика 2:** PowerShell splatting — `@body.json` ломается в парсере PS (включая PS 7 в IDEA-терминале). Фикс: `-d (Get-Content -Raw body.json)`. Побочно: установлен **PowerShell 7.4.6** через msi, настроен в IDEA (Shell path → `C:\Program Files\PowerShell\7\pwsh.exe`).
+- 🧪 Мини-экзамен (4 вопроса, **~87%**): UserDetailsService частота (60%) + HttpMethod в matchers (100%) + порядок matcher'ов (100%) + permitAll vs authenticated (100%)
+- ✅ Коммит `e93bbbe` на main
 
 **Что сделано в шаге 8 (финал, 10.09.2026, сессия №18):**
-- ✅ **8-A (JPQL):** `MessageLogRepository.findByRecipientOrderByCreatedAtDesc(...)`, `findByCreatedAtBetween(Instant, Instant)` — тип параметра `Instant` после бага совместимости (Hibernate 6+ требует совпадения типа параметра с типом поля entity)
-- ✅ **8-B (native):** `AuditLogRepository.findByEventTypeNative(@Param("eventType") String eventType)` — `SELECT * FROM audit_log WHERE event_type = :eventType ORDER BY created_at DESC`, тест с seed 3 записей (2× EMAIL_SENT, 1× EMAIL_FAILED) — работает
-- ✅ **8-C (Specification API):** 3 static-спецификации в `MessageLogRepository` (`hasRecipient`, `textContains`, `createdAfter`) с null-проверками и `cb.lower()` для case-insensitive LIKE. `MessageLogController.search()` — constructor injection, `Specification.unrestricted()` для null-safe chaining (фикс: `Specification.where(null)` падает с `IllegalArgumentException` ВСЕГДА, а не только в Spring Data 3+)
-- ✅ `H2ServerConfig`: убран `@Profile("dev")` (TCP-сервер нужен в любом профиле, иначе при `test-query` падает подключение)
-- ✅ `ConsoleEmailSender` `@Profile({"dev","test-query"})` — оставлено как есть
-- 🔍 **Диагностика 1:** `EmailSender bean not found` при `dev` → оказалось, IDEA кешировала `target/classes/` без пересборки (`ConsoleEmailSender.class` и `FailingEmailSender.class` отсутствовали). Фикс: `Build → Rebuild Project` + убить старые java-процессы
-- 🔍 **Диагностика 2:** `Specification.where(null)` → `IllegalArgumentException: Specification must not be null` — сигнатура `Specification.java:89` ВСЕГДА проверяет на null (мы перепутали с `and()/or()`, которые null-толерантны)
-- ✅ Верификация: все 5 curl'ов на `/messages/search` вернули 200 + JSON (без фильтра / `?recipient=...` / `?q=TCP` / combo / ghost → `[]`)
-- 🧪 Мини-экзамен (3 вопроса, **~75%**): A vs B vs C (55%) + тип `Instant` (100%) + парсинг `LocalDate → Instant` (80%)
-- ✅ Удалён `TestQueryRunner.java` (временный runner, задача выполнена)
-- ✅ Коммит `983f8dc` на main
 
 **Сравнение 3 способов запросов (на собесе любят):**
 

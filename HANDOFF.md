@@ -24,18 +24,28 @@
 
 ## 📊 Текущий статус
 
-- **Шаг:** 8 / 15 ✅ (Spring Data JPA queries, **закрыт 10.09.2026**, коммит `983f8dc`)
+- **Шаг:** 9 / 15 ✅ (Spring Security basics, **закрыт 11.09.2026**, коммит `e93bbbe`)
 - **Дата старта курса №2:** 28.08.2026 17:10
-- **Дата последнего обновления:** 10.09.2026 ~16:35 (финал шага 8)
+- **Дата последнего обновления:** 11.09.2026 10:20 (финал шага 9)
 - **Средний балл по мини-экзаменам (12 тем):** **~71%** (12 тем: 90+60+90+95+70+90+65+95+80+40+55+100+80 = 1010/13 ≈ 77.7% — но включая частичные вопросы шага 8 = 71% с весом)
-- **Средний балл по шагам (6 закрытых шагов):** **~81%** (80+93+85+83+70+75)/6 = 81% (без изменений по сути)
+- **Средний балл по шагам (7 закрытых шагов):** **~82%** (80+93+85+83+70+75+87)/7 = ~82% (шаг 9 повысил средний)
 - **Средний балл по шагу 2:** 80%
 - **Средний балл по шагу 3:** ~93% (лучший в курсе №2)
 - **Средний балл по шагу 4:** ~85%
 - **Средний балл по шагу 6:** **~83%** (micro-1: 78%, micro-2: REQUIRES_NEW 95%)
 - **Средний балл по шагу 7:** **~70%** (V vs R — слабо, подтянуть на собесе)
 - **Средний балл по шагу 8:** **~75%** (A vs B vs C — 55%, нужно подтянуть use-cases)
-- **Всего потрачено:** **21.7 ч** (17.5 до + 3.6 (06.09, сессии №16–17) + 0.6 (10.09, сессия №18))
+- **Средний балл по шагу 9:** **~87%** (UserDetailsService частота 60%; HttpMethod/порядок/permitAll — 100%)
+- **Всего потрачено:** **21.7 ч** (17.5 до + 3.6 (06.09, сессии №16–17) + 0.6 (10.09, сессия №18); время 11.09 будет добавлено при закрытии сессии)
+
+**Что сделано в шаге 9 (11.09.2026, сегодня):**
+- ✅ **9-A:** `pom.xml` + `spring-boot-starter-security` (коммит `3174036` — отдельный коммит под 9-A). Дефолтный Security подтверждён: `curl -u "user:<uuid>"` → 200 + JSON, headers видны (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`). Фронт (path C) создан: `src/main/resources/static/{index.html,app.js,style.css}`. Порт 8081 (из `application.properties`).
+- ✅ **9-B:** `SecurityConfig.java` (создал ученик) с `@Bean SecurityFilterChain` — `permitAll` для статики, `anyRequest().authenticated()` для API, `httpBasic` для curl, `csrf.disable()` для REST. Фикс: пропустил слэш у `"style.css"` → `pattern must start with a /`.
+- ✅ **9-C:** `BCryptPasswordEncoder` + `InMemoryUserDetailsManager` с 2 юзерами: `alice/alice123` (USER), `admin/admin123` (USER+ADMIN). `requestMatchers(HttpMethod.POST, "/messages").hasRole("ADMIN")` — обязательно с `HttpMethod`.
+- 🔍 **Бонус-диагностика 1:** `requestMatchers("POST", ...)` со String → Spring парсит оба как URL → ошибка. Фикс: `HttpMethod.POST` (enum).
+- 🔍 **Бонус-диагностика 2:** PowerShell splatting `@body.json` ломается (даже в PS 7). Фикс: `-d (Get-Content -Raw body.json)`. Установлен PowerShell 7.4.6, настроен в IDEA как Shell path.
+- 🧪 Мини-экзамен (4 вопроса, **~87%**): UserDetailsService (60%) + HttpMethod (100%) + порядок matcher'ов (100%) + permitAll (100%)
+- ✅ Коммит `e93bbbe` на main
 
 **Что сделано в шаге 8 (10.09.2026, сессия №18):**
 - ✅ **8-A (JPQL):** `MessageLogRepository.findByRecipientOrderByCreatedAtDesc(...)`, `findByCreatedAtBetween(Instant, Instant)` — тип `Instant` после бага совместимости
